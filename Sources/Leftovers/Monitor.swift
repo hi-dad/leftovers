@@ -182,7 +182,9 @@ final class Monitor: NSObject, ObservableObject {
                             ports: st.ports, connections: st.connections,
                             lastOutput: st.writes.map(\.modified).max(), averageCpu: st.average,
                             startTimes: fam.map { $0.start.timeIntervalSince1970 },
-                            keepKey: "\(classifier.project(for: root.cwd) ?? root.cwd)|\(Describe.title(for: main))")
+                            keepKey: "\(classifier.project(for: root.cwd) ?? root.cwd)|\(Describe.title(for: main))",
+                            noun: st.ports.isEmpty ? Describe.noun(for: main) : "Test website",
+                            starter: main.pid != root.pid && root.name != main.name ? Describe.title(for: root) : nil)
             let age = Describe.duration(now.timeIntervalSince(root.start))
             switch kind {
             case .leftover:
@@ -225,7 +227,8 @@ final class Monitor: NSObject, ObservableObject {
                               command: "xcrun simctl shutdown \(sim.udid)",
                               pids: fam.map(\.pid), started: started, cpuPercent: st.cpu, watts: st.watts,
                               batteryPerHour: perHour(st.watts), averageCpu: st.average,
-                              keepKey: "sim-\(sim.udid)-\(Int(started.timeIntervalSince1970))"))
+                              keepKey: "sim-\(sim.udid)-\(Int(started.timeIntervalSince1970))",
+                              noun: sim.name.contains("iPad") ? "iPad simulator" : "iPhone simulator", apps: apps))
         }
 
         // Sleep holds taken by Claude or by anything Claude started.

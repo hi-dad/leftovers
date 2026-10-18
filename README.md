@@ -12,7 +12,7 @@ Claude Code often starts background work: builds, video encodes, dev servers, iP
 
 ## What it shows
 
-At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Below that, it lists only things you can act on:
+At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Below that, each row is one plain sentence, like *"Python script stuck in zom-zom"* or *"iPhone simulator running StoryboardAR"*, plus why it's listed. **Details** shows the technical facts: the program, the script that started it, the Claude chat, the folder, the command and the battery cost. Only things you can act on are listed:
 
 | Section | What it means | Buttons |
 |---|---|---|

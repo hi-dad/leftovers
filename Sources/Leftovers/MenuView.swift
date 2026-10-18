@@ -6,6 +6,7 @@ let menuWidth: CGFloat = 400
 final class UIState: ObservableObject {
     static let shared = UIState()
     @Published var showSettings = false
+    var expandFirst = false   // README picture only
 }
 
 struct MenuView: View {
@@ -22,14 +23,8 @@ struct MenuView: View {
         }
     }
 
-    private var sections: [(ItemKind, [Item])] {
-        let order: [ItemKind] = [.leftover, .sleepHold, .simulator, .appStarted, .sessionJob]
-        return order.compactMap { kind in
-            let list = shown.filter { $0.kind == kind }.sorted {
-                ($0.verdict.level, $0.watts) > ($1.verdict.level, $1.watts)
-            }
-            return list.isEmpty ? nil : (kind, list)
-        }
+    private var sorted: [Item] {
+        shown.sorted { ($0.verdict.level, $0.watts) > ($1.verdict.level, $1.watts) }
     }
 
     var body: some View {
@@ -52,15 +47,7 @@ struct MenuView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
                 StatusBanner(attention: shown.filter { $0.verdict.level >= .warn }, others: shown.count)
-                ForEach(sections, id: \.0) { kind, list in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(kind.heading.uppercased())
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 4)
-                        ForEach(list) { ItemRow(item: $0) }
-                    }
-                }
+                ForEach(sorted) { ItemRow(item: $0, expanded: ui.expandFirst && $0.id == sorted.first?.id) }
             }
             .padding(12)
         }
@@ -149,41 +136,37 @@ struct StatusBanner: View {
 struct ItemRow: View {
     let item: Item
     @EnvironmentObject var m: Monitor
-    @State private var expanded = false
+    @State private var expanded: Bool
     @State private var stopping = false
+
+    init(item: Item, expanded: Bool = false) {
+        self.item = item
+        _expanded = State(initialValue: expanded)
+    }
 
     var icon: String {
         switch item.kind {
-        case .leftover: "exclamationmark.triangle"
-        case .sessionJob: "gearshape.2"
-        case .appStarted: "server.rack"
+        case .leftover: item.ports.isEmpty ? "exclamationmark.triangle" : "globe"
+        case .sessionJob, .appStarted: "globe"
         case .simulator: "iphone"
         case .sleepHold: "moon.zzz"
         }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: icon)
                     .frame(width: 18)
                     .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(item.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
-                        if !item.verdict.tag.isEmpty {
-                            Text(item.verdict.tag)
-                                .font(.system(size: 10, weight: .semibold))
-                                .padding(.horizontal, 5).padding(.vertical, 1)
-                                .background(Capsule().fill(levelColor.opacity(0.18)))
-                                .foregroundStyle(levelColor)
-                                .fixedSize()
-                        }
-                    }
-                    Text(item.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
-                    if let extra = extraLine {
-                        Text(extra).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }
+                    Text(Describe.summary(item))
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(Describe.reason(item))
+                        .font(.caption)
+                        .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
                 }
                 Spacer(minLength: 4)
                 if let cost = costText {
@@ -192,40 +175,82 @@ struct ItemRow: View {
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Capsule().fill(costColor.opacity(0.18)))
                         .foregroundStyle(costColor)
-                        .help(String(format: "%.1f W · %.0f%% CPU", item.watts, item.cpuPercent))
+                        .help("Share of your battery this uses per hour")
                 }
             }
-            if !actions.isEmpty {
-                HStack(spacing: 14) {
-                    ForEach(actions, id: \.0) { label, action in
-                        Button(label, action: action)
-                    }
+            HStack(spacing: 14) {
+                ForEach(actions, id: \.0) { label, action in
+                    Button(label, action: action)
                 }
-                .buttonStyle(.borderless)
-                .font(.system(size: 11, weight: .medium))
-                .padding(.leading, 26)
-                .disabled(stopping)
+                Spacer()
+                Button {
+                    expanded.toggle()
+                } label: {
+                    HStack(spacing: 3) {
+                        Text("Details")
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundStyle(.secondary)
+                }
             }
-            if expanded {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.command)
-                        .font(.system(size: 10, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(4)
-                        .textSelection(.enabled)
-                    if item.folder != nil, item.kind != .simulator {
-                        Button("Show folder") { m.showFolder(item) }
-                            .buttonStyle(.borderless)
-                            .font(.system(size: 11, weight: .medium))
-                    }
-                }
-                .padding(.leading, 26)
+            .buttonStyle(.borderless)
+            .font(.system(size: 11, weight: .medium))
+            .padding(.leading, 26)
+            .disabled(stopping)
+            if expanded { details.padding(.leading, 26) }
+        }
+        .padding(.vertical, 8).padding(.horizontal, 8)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+    }
+
+    /// The technical facts, for when you want to know exactly what it is.
+    private var details: some View {
+        let now = Date()
+        var rows: [(String, String)] = []
+        switch item.kind {
+        case .simulator:
+            rows.append(("Device", item.title))
+            if !item.apps.isEmpty { rows.append(("App", item.apps.joined(separator: ", "))) }
+            rows.append(("Booted", Describe.duration(now.timeIntervalSince(item.started)) + " ago"))
+        case .sleepHold:
+            rows.append(("What", item.title))
+            rows.append(("Since", Describe.duration(now.timeIntervalSince(item.started)) + " ago"))
+            rows.append(("Fix", "Claude → Settings → Claude Code → turn off “Keep awake on battery”"))
+        default:
+            rows.append(("Program", item.title))
+            if let s = item.starter { rows.append(("Started by", s)) }
+            if let s = item.session { rows.append(("Claude chat", "“\(s)”" + (item.sessionGuessed ? " (probably)" : ""))) }
+            if let f = item.folder { rows.append(("Folder", (f as NSString).abbreviatingWithTildeInPath)) }
+            rows.append(("Running for", Describe.duration(now.timeIntervalSince(item.started))))
+            if let out = item.lastOutput { rows.append(("Last saved output", Describe.duration(now.timeIntervalSince(out)) + " ago")) }
+            if !item.ports.isEmpty {
+                rows.append(("Address", item.ports.map { "localhost:\($0)" }.joined(separator: ", ")))
+                rows.append(("Visitors now", item.connections == 0 ? "none" : "\(item.connections)"))
             }
         }
-        .padding(.vertical, 6).padding(.horizontal, 6)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
-        .contentShape(Rectangle())
-        .onTapGesture { expanded.toggle() }
+        if let b = item.batteryPerHour, item.kind != .sleepHold {
+            rows.append(("Battery", String(format: "~%.1f%% an hour (%.0f%% CPU)", b, item.cpuPercent)))
+        }
+        return VStack(alignment: .leading, spacing: 3) {
+            ForEach(rows, id: \.0) { k, v in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(k).foregroundStyle(.secondary).frame(width: 96, alignment: .leading)
+                    Text(v).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if item.kind != .simulator && item.kind != .sleepHold {
+                Text(item.command)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(4)
+                    .textSelection(.enabled)
+                    .padding(.top, 2)
+                if item.folder != nil {
+                    Button("Show folder") { m.showFolder(item) }.buttonStyle(.borderless).padding(.top, 2)
+                }
+            }
+        }
+        .font(.system(size: 11))
     }
 
     private var levelColor: Color {
@@ -240,6 +265,7 @@ struct ItemRow: View {
         if stopping { return [(item.kind == .simulator ? "Shutting down…" : "Stopping…", {})] }
         var a: [(String, () -> Void)] = []
         let stop = { stopping = true; m.stop(item) }
+        if !item.ports.isEmpty { a.append(("Open", { m.openInBrowser(item) })) }
         switch item.kind {
         case .leftover, .appStarted, .simulator:
             if item.kind != .appStarted || item.verdict.level >= .info {
@@ -251,26 +277,12 @@ struct ItemRow: View {
                 a.append(("Keep", { m.keep(item) }))
             }
             if item.verdict.level >= .warn { a.append(("Snooze 1 h", { m.snooze(item) })) }
-            if !item.ports.isEmpty { a.insert(("Open", { m.openInBrowser(item) }), at: 0) }
         case .sleepHold:
-            if item.verdict.level >= .info { a.append(("Open Claude", { m.openClaude() })) }
+            a.append(("Open Claude", { m.openClaude() }))
         case .sessionJob:
-            if !item.ports.isEmpty { a.append(("Open", { m.openInBrowser(item) })) }
-        default: break
+            break
         }
         return a
-    }
-
-    private var extraLine: String? {
-        var parts: [String] = []
-        if let p = item.project, item.kind != .simulator { parts.append(p) }
-        if let out = item.lastOutput {
-            parts.append("last wrote output \(Describe.duration(Date().timeIntervalSince(out))) ago")
-        }
-        if !item.ports.isEmpty {
-            parts.append(item.connections == 0 ? "no one connected" : "\(item.connections) connected")
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     private var costText: String? {

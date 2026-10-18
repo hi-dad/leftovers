@@ -35,16 +35,6 @@ enum ItemKind: String, Codable, CaseIterable {
     case appStarted    // started by the Claude app itself (preview servers and the like)
     case simulator     // a booted iPhone/iPad simulator
     case sleepHold     // something keeping the Mac from sleeping
-
-    var heading: String {
-        switch self {
-        case .leftover: "Left behind"
-        case .sessionJob: "Running in a Claude session"
-        case .appStarted: "Started by the Claude app"
-        case .simulator: "Simulators"
-        case .sleepHold: "Keeping your Mac awake"
-        }
-    }
 }
 
 /// One row in the menu: a process family, a simulator, or a sleep hold.
@@ -70,6 +60,9 @@ struct Item: Identifiable, Codable, Equatable {
     var startTimes: [Double] = [] // start time of each pid, so Stop never hits a reused pid
     var keepKey = ""              // what "Keep" remembers (project + command, or device + boot)
     var verdict = Verdict(level: .none, tag: "")
+    var noun = ""                 // plain name of what it is ("Python script", "Video export")
+    var starter: String?          // the script that started it, when that's a different program
+    var apps: [String] = []       // apps open in a simulator
 }
 
 struct BatteryState: Codable, Equatable {

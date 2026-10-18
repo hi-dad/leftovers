@@ -15,14 +15,23 @@ enum DemoRender {
             i.verdict = verdict
             return i
         }
-        let demo = [
-            item(.leftover, "Video encoding (ffmpeg)", "Left by “QuickNote ad video” · running 2 days · started by Script build.sh",
-                 hours: 48, perHour: 8, verdict: Verdict(level: .alarm, tag: "Looks stuck"), project: "scratch files", output: 47),
-            item(.simulator, "iPhone 17 (iOS 27.0)", "Running StoryboardAR · booted 31 h ago",
-                 hours: 31, perHour: 4, verdict: Verdict(level: .warn, tag: "Unused 30 h")),
-            item(.appStarted, "Dev server (Vite) on port 5173", "Running for 3 h",
-                 hours: 3, perHour: 0.2, verdict: Verdict(level: .info, tag: "Idle 2 h"), project: "pokemon-silverwind", ports: [5173]),
-        ]
+        var stuck = item(.leftover, "Video encoding (ffmpeg)", "", hours: 48, perHour: 8,
+                         verdict: Verdict(level: .alarm, tag: "Looks stuck"), project: "scratch files", output: 47)
+        stuck.noun = "Video export"; stuck.session = "QuickNote ad video"; stuck.starter = "Script build.sh"
+        stuck.folder = NSHomeDirectory() + "/Desktop/claude/quick-ad"
+        stuck.command = "ffmpeg -i 67.mov -i 66.mov -filter_complex … -c:v libx264 quicknote-ad.mp4"
+        stuck.cpuPercent = 250
+        var loop = item(.leftover, "Python one-liner", "", hours: 2, perHour: 3,
+                        verdict: Verdict(level: .warn, tag: "Forgotten"), project: "zom-zom")
+        loop.noun = "Python script"
+        var sim = item(.simulator, "iPhone 17 (iOS 27.0)", "", hours: 31, perHour: 4,
+                       verdict: Verdict(level: .warn, tag: "Unused 30 h"))
+        sim.noun = "iPhone simulator"; sim.apps = ["StoryboardAR"]
+        var site = item(.appStarted, "Dev server (Vite) on port 5173", "", hours: 3, perHour: 0.2,
+                        verdict: Verdict(level: .info, tag: "Idle 2 h"), project: "pokemon-silverwind", ports: [5173])
+        site.noun = "Test website"
+        let demo = [stuck, loop, sim, site]
+        UIState.shared.expandFirst = !settings
         Monitor.shared.showDemo(demo)
         let view = MenuView().environmentObject(Monitor.shared)
             .background(Color(nsColor: NSColor(white: 0.17, alpha: 1)))

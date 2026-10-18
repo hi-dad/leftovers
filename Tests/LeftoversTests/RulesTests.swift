@@ -110,3 +110,31 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.judge(i, track: t, ctx: ctx(snoozed: ["x": now.addingTimeInterval(-1)])).level == .alarm)
     }
 }
+
+@Suite struct PlainWords {
+    func leftover(_ noun: String, tag: String, project: String? = nil, session: String? = nil, ports: [UInt16] = []) -> Item {
+        var i = item(.leftover, ports: ports)
+        i.noun = noun; i.project = project; i.session = session
+        i.verdict = Verdict(level: .warn, tag: tag)
+        return i
+    }
+
+    @Test func summaries() {
+        #expect(Describe.summary(leftover("Python script", tag: "Looks stuck", project: "zom-zom")) == "Python script stuck in zom-zom")
+        #expect(Describe.summary(leftover("Video export", tag: "Looks stuck", project: "scratch files", session: "QuickNote ad"))
+                == "Video export stuck from your “QuickNote ad” chat")
+        #expect(Describe.summary(leftover("Node script", tag: "Forgotten", project: "morse-waldo")) == "Node script still running in morse-waldo")
+        #expect(Describe.summary(leftover("Test website", tag: "Left behind", project: "zom-zom", ports: [8000])) == "Test website for zom-zom left running")
+        var sim = item(.simulator); sim.noun = "iPhone simulator"; sim.apps = ["StoryboardAR"]
+        #expect(Describe.summary(sim) == "iPhone simulator running StoryboardAR")
+    }
+
+    @Test func reasons() {
+        var i = leftover("Python script", tag: "Forgotten")
+        #expect(Describe.reason(i) == "Claude finished, but this kept going")
+        i.verdict.tag = "Unused 30 h"
+        #expect(Describe.reason(i) == "Not used in 30 h")
+        i.verdict.tag = "Idle 2 h"
+        #expect(Describe.reason(i) == "Nobody has opened it in 2 h")
+    }
+}

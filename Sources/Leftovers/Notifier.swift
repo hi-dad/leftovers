@@ -47,13 +47,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         for i in m.items where i.verdict.level >= .warn {
             guard (notified[i.id] ?? .none) < i.verdict.level else { continue }
             notified[i.id] = i.verdict.level
-            let title: String
-            switch i.kind {
-            case .leftover: title = i.verdict.level == .alarm ? "\(i.title) looks stuck" : "A leftover from Claude is still running"
-            case .simulator: title = "\(i.title) is running unused"
-            case .sleepHold: title = "Claude is keeping your Mac awake"
-            default: title = i.title
-            }
+            let title = Describe.summary(i)
             let category = i.kind == .simulator ? "simulator" : i.kind == .sleepHold ? "sleep" : "leftover"
             post(id: i.id, title: title, body: i.verdict.message, category: category, quiet: quiet)
         }

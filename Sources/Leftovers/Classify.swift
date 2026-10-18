@@ -148,6 +148,62 @@ enum Describe {
         }
     }
 
+    /// What it is, in everyday words, for the one-line summary.
+    static func noun(for p: ProcRecord) -> String {
+        let name = p.name.lowercased(), joined = p.args.joined(separator: " ")
+        switch true {
+        case name == "ffmpeg": return "Video export"
+        case ["http.server", "vite", "next dev", "next-server", "expo start", "metro", "webpack"].contains(where: joined.contains):
+            return "Test website"
+        case name.hasPrefix("python"): return "Python script"
+        case name == "node": return "Node script"
+        case ["bash", "zsh", "sh"].contains(name): return "Script"
+        case name == "xcodebuild" || name.hasPrefix("swift"): return "App build"
+        case name == "caffeinate": return "Keep-awake command"
+        default: return "Program (\(p.name))"
+        }
+    }
+
+    /// The one-line summary shown on each row ("Python script stuck in zom-zom").
+    static func summary(_ i: Item) -> String {
+        var place = ""
+        if let p = i.project, p != "scratch files" { place = " in \(p)" }
+        else if let s = i.session { place = " from your “\(s)” chat" }
+        switch i.kind {
+        case .simulator:
+            return i.noun + (i.apps.isEmpty ? " running" : " running " + ListFormatter.localizedString(byJoining: i.apps))
+        case .sleepHold:
+            return "Claude is keeping your Mac awake for no reason"
+        case .appStarted, .sessionJob:
+            return i.ports.isEmpty ? i.noun + place : "Test website" + (i.project.map { " for \($0)" } ?? "")
+        case .leftover:
+            if !i.ports.isEmpty { return "Test website" + (i.project.map { $0 == "scratch files" ? place : " for \($0)" } ?? place) + " left running" }
+            switch i.verdict.tag {
+            case "Looks stuck": return "\(i.noun) stuck\(place)"
+            case "Forgotten": return "\(i.noun) still running\(place)"
+            default: return "\(i.noun) left running\(place)"
+            }
+        }
+    }
+
+    /// The second line: why it's listed, in plain words.
+    static func reason(_ i: Item, now: Date = Date()) -> String {
+        let tag = i.verdict.tag
+        switch true {
+        case tag == "Kept": return "You chose to keep this running"
+        case tag == "Snoozed": return "Snoozed for now"
+        case tag == "In use": return "Someone has it open, so it's fine"
+        case tag == "Looks stuck":
+            return "Working hard, but no progress in \(duration(now.timeIntervalSince(i.lastOutput ?? i.started)))"
+        case tag == "Forgotten": return "Claude finished, but this kept going"
+        case tag.hasPrefix("Idle "): return "Nobody has opened it in \(tag.dropFirst(5))"
+        case tag.hasPrefix("Unused "): return "Not used in \(tag.dropFirst(7))"
+        case tag.hasPrefix("No Claude work"): return "Claude hasn't done anything in \(tag.dropFirst("No Claude work for ".count))"
+        case i.kind == .leftover: return "Claude finished, but this is still running"
+        default: return "Running for \(duration(now.timeIntervalSince(i.started)))"
+        }
+    }
+
     private static func scriptName(_ p: ProcRecord) -> String? {
         let rest = Array(p.args.dropFirst())
         if let i = rest.firstIndex(of: "-m"), i + 1 < rest.count { return rest[i + 1] }
