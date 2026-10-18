@@ -96,7 +96,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         let hold = item(.sleepHold, perHour: nil, startedAgo: 55 * hour)
         let t = Track(firstSeen: now)
         #expect(Rules.judge(hold, track: t, ctx: ctx(battery: true, claudeIdle: 5 * min)).level == .none)   // working
-        #expect(Rules.judge(hold, track: t, ctx: ctx(battery: false, claudeIdle: 3 * hour)).level == .info) // plugged in
+        #expect(Rules.judge(hold, track: t, ctx: ctx(battery: false, claudeIdle: 3 * hour)).level == .none) // plugged in
         let v = Rules.judge(hold, track: t, ctx: ctx(battery: true, claudeIdle: 3 * hour))
         #expect(v.level == .alarm)
         #expect(v.message.contains("Keep awake on battery"))

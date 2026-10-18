@@ -2,22 +2,26 @@
 
 A tiny Mac menu-bar app that spots things Claude left running and draining your battery, then stops them with one click.
 
-<img src="images/menu.png" width="400" alt="The Leftovers dropdown: a stuck job flagged red with Stop, Keep and Snooze buttons">
+<img src="images/all-clear.png" width="400" alt="Leftovers showing a green All clear banner">
+
+<img src="images/menu.png" width="400" alt="The Leftovers dropdown: a stuck job flagged red, an unused simulator, an idle dev server, each with buttons">
 
 ## Why
 
 Claude Code often starts background work: builds, video encodes, dev servers, iPhone simulators. When a session ends, some of that work can keep running with nothing watching it. Leftovers was written after a video encode had been stuck for **two days** at full power, two simulators had been running for over a day, and the Claude app had been stopping the Mac from sleeping for 55 hours. Nothing had warned about any of it.
 
-## What it watches
+## What it shows
 
-| Section | What it means |
-|---|---|
-| **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. |
-| **Keeping your Mac awake** | Claude (or something it started) is stopping the Mac from sleeping. |
-| **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. |
-| **Running in a Claude session** | Busy work owned by a session that's still open. Listed for your information; never flagged. |
-| **Started by the Claude app** | Preview/dev servers the app started, with how many browsers are connected. |
-| **The Claude app itself** | For comparison. |
+At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Below that, it lists only things you can act on:
+
+| Section | What it means | Buttons |
+|---|---|---|
+| **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. | Stop · Keep · Snooze |
+| **Keeping your Mac awake** | Only when it's a problem: on battery, while Claude isn't working. | Open Claude |
+| **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Keep |
+| **Started by the Claude app** / **Running in a Claude session** | Dev/preview servers, with whether anyone is connected. | Open · Stop |
+
+Claude keeping your Mac awake *while it works* is intended, so that isn't shown.
 
 Every row shows its **battery cost** as a share of your battery per hour (e.g. `8%/h`), worked out from the energy macOS measures for each process.
 
@@ -42,7 +46,7 @@ On battery, all waits are cut in half. Each problem is announced once, with **St
 - Fully offline. It reads the process list, battery info and the Claude app's session titles on your Mac. Nothing leaves the computer.
 - The only permission it asks for is the standard one for notifications.
 - It only looks at processes that came from Claude, or that run inside Claude's scratch folders or your project folders (Settings → Project folders; default `~/Desktop/claude`). It never touches your normal apps.
-- It uses about 0.02% of the battery per hour itself (shown in the footer). It checks every minute on battery and every 3 minutes when plugged in.
+- It's very light: about 0.02% of the battery per hour. It checks every minute on battery and every 3 minutes when plugged in.
 
 <img src="images/settings.png" width="400" alt="Settings: open at login, notifications, project folders, kept list">
 
@@ -55,7 +59,7 @@ Needs the Swift toolchain (Xcode or Command Line Tools); no Xcode project.
 swift test      # alarm-rule and classification tests
 ```
 
-Testing helpers: `Leftovers --once` prints one scan as JSON, `Leftovers --stop <title>` stops a matching leftover, and `defaults write com.danielryan.Leftovers ruleSpeedup -float 60` makes every wait 60× shorter (delete it afterwards).
+Testing helpers: `Leftovers --once` prints one scan as JSON, `Leftovers --render-demo out.png [--settings]` draws the README pictures, `Leftovers --stop <title>` stops a matching leftover, and `defaults write com.danielryan.Leftovers ruleSpeedup -float 60` makes every wait 60× shorter (delete it afterwards).
 
 ## License
 

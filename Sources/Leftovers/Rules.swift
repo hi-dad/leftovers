@@ -91,7 +91,7 @@ enum Rules {
             }
             return Verdict(level: .none, tag: "")
 
-        case .sessionJob, .claudeApp:
+        case .sessionJob:
             return Verdict(level: .none, tag: "")
 
         case .simulator:
@@ -106,7 +106,8 @@ enum Rules {
             let held = now.timeIntervalSince(i.started)
             let idle = now.timeIntervalSince(ctx.lastClaudeWorking)
             guard held >= 2 * hour / ctx.speedup, idle >= 30 * min / ctx.speedup else { return Verdict(level: .none, tag: "") }
-            if !ctx.onBattery { return Verdict(level: .info, tag: "No Claude work for \(Describe.duration(idle))") }
+            // Staying awake while plugged in costs no battery, and staying awake while Claude works is the point.
+            if !ctx.onBattery { return Verdict(level: .none, tag: "") }
             return Verdict(level: .alarm, tag: "No Claude work for \(Describe.duration(idle))",
                            message: "Claude has kept your Mac awake for \(Describe.duration(held)), but no session has worked in \(Describe.duration(idle)). To stop this on battery, turn off Settings → Claude Code → “Keep awake on battery”.")
         }

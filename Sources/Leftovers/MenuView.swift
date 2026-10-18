@@ -12,10 +12,20 @@ struct MenuView: View {
     @EnvironmentObject var m: Monitor
     @ObservedObject var ui = UIState.shared
 
+    /// Only rows you can do something about: leftovers, simulators, servers, and a sleep hold that is a problem.
+    private var shown: [Item] {
+        m.items.filter { i in
+            switch i.kind {
+            case .sleepHold: i.verdict.level >= .warn
+            default: true
+            }
+        }
+    }
+
     private var sections: [(ItemKind, [Item])] {
-        let order: [ItemKind] = [.leftover, .sleepHold, .simulator, .sessionJob, .appStarted, .claudeApp]
+        let order: [ItemKind] = [.leftover, .sleepHold, .simulator, .appStarted, .sessionJob]
         return order.compactMap { kind in
-            let list = m.items.filter { $0.kind == kind }.sorted {
+            let list = shown.filter { $0.kind == kind }.sorted {
                 ($0.verdict.level, $0.watts) > ($1.verdict.level, $1.watts)
             }
             return list.isEmpty ? nil : (kind, list)
@@ -39,50 +49,28 @@ struct MenuView: View {
     }
 
     private var list: some View {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    if !sections.contains(where: { $0.0 != .claudeApp }) {
-                        Label("Nothing left running", systemImage: "leaf")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                StatusBanner(attention: shown.filter { $0.verdict.level >= .warn }, others: shown.count)
+                ForEach(sections, id: \.0) { kind, list in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(kind.heading.uppercased())
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 14)
-                    }
-                    ForEach(sections, id: \.0) { kind, list in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(kind.heading.uppercased())
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .padding(.horizontal, 4)
-                            ForEach(list) { ItemRow(item: $0) }
-                        }
+                            .padding(.horizontal, 4)
+                        ForEach(list) { ItemRow(item: $0) }
                     }
                 }
-                .padding(12)
             }
-            .frame(maxHeight: 460)
+            .padding(12)
+        }
+        .frame(maxHeight: 460)
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(ui.showSettings ? "Leftovers Settings" : "Leftovers").font(.headline)
-            Spacer()
-            Text(batteryLine).font(.caption).foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 14).padding(.vertical, 10)
-    }
-
-    private var batteryLine: String {
-        let b = m.battery
-        var s = b.onBattery ? "On battery" : "Plugged in"
-        if let p = b.percent { s += " · \(p)%" }
-        if b.lowPowerMode { s += " · Low Power" }
-        return s
-    }
-
-    private var ownCost: String {
-        if m.ownWatts < 0 { return "measuring…" }
-        let pct = m.battery.capacityWh > 0 ? m.ownWatts / m.battery.capacityWh * 100 : 0
-        return pct < 0.1 ? "<0.1% battery/h" : String(format: "%.1f%% battery/h", pct)
+        Text(ui.showSettings ? "Leftovers Settings" : "Leftovers")
+            .font(.headline)
+            .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
     private var footer: some View {
@@ -112,7 +100,6 @@ struct MenuView: View {
                     Text(ago < 60 ? "Checked just now" : "Checked \(Describe.duration(ago)) ago")
                 }
             }
-            Text("· Leftovers itself: " + ownCost).help(String(format: "%.3f W", m.ownWatts))
             Spacer()
             if ui.showSettings {
                 Button("Done") { ui.showSettings = false }
@@ -125,6 +112,37 @@ struct MenuView: View {
         .buttonStyle(.borderless)
         .font(.caption)
         .foregroundStyle(.secondary)
+    }
+}
+
+/// The answer to "is anything wasting my battery?", always at the top.
+struct StatusBanner: View {
+    let attention: [Item]
+    let others: Int
+
+    var body: some View {
+        let ok = attention.isEmpty
+        let color: Color = ok ? .green : attention.contains { $0.verdict.level == .alarm } ? .red : .orange
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundStyle(color)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(ok ? "All clear" : attention.count == 1 ? "1 thing needs a look" : "\(attention.count) things need a look")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(color.opacity(0.15)))
+    }
+
+    private var subtitle: String {
+        if !attention.isEmpty { return "Something from Claude is wasting battery." }
+        return others == 0 ? "Nothing Claude started is still running."
+                           : "Nothing is wasting battery. Here's what's still running:"
     }
 }
 
@@ -141,7 +159,6 @@ struct ItemRow: View {
         case .appStarted: "server.rack"
         case .simulator: "iphone"
         case .sleepHold: "moon.zzz"
-        case .claudeApp: "sparkle"
         }
     }
 

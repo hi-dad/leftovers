@@ -35,7 +35,6 @@ enum ItemKind: String, Codable, CaseIterable {
     case appStarted    // started by the Claude app itself (preview servers and the like)
     case simulator     // a booted iPhone/iPad simulator
     case sleepHold     // something keeping the Mac from sleeping
-    case claudeApp     // the Claude app's own processes, for comparison
 
     var heading: String {
         switch self {
@@ -44,7 +43,6 @@ enum ItemKind: String, Codable, CaseIterable {
         case .appStarted: "Started by the Claude app"
         case .simulator: "Simulators"
         case .sleepHold: "Keeping your Mac awake"
-        case .claudeApp: "The Claude app itself"
         }
     }
 }

@@ -8,7 +8,6 @@ final class Monitor: NSObject, ObservableObject {
     @Published private(set) var items: [Item] = []
     @Published private(set) var battery = SystemInfo.battery()
     @Published private(set) var scannedAt: Date?
-    @Published private(set) var ownWatts: Double = -1
     /// Called on the main thread after each scan, with whether the Mac was on battery before it.
     var onScanned: ((Bool) -> Void)?
 
@@ -28,8 +27,6 @@ final class Monitor: NSObject, ObservableObject {
 
     private let queue = DispatchQueue(label: "leftovers.scan", qos: .utility)
     private var previous: [pid_t: Sample] = [:]
-    private var ownBaseline: Sample?
-    private let launchedAt = Date()
     private var timer: Timer?
     private var scanning = false
 
@@ -63,13 +60,12 @@ final class Monitor: NSObject, ObservableObject {
         scanning = true
         queue.async { [weak self] in
             guard let self else { return }
-            let (raw, battery, own, facts) = self.compute(now: Date())
+            let (raw, battery, facts) = self.compute(now: Date())
             DispatchQueue.main.async {
                 let wasOnBattery = self.battery.onBattery
                 self.battery = battery
                 self.judge(raw, facts: facts, now: Date())
                 self.onScanned?(wasOnBattery)
-                self.ownWatts = own
                 self.scannedAt = Date()
                 self.scanning = false
                 self.writeStatus()
@@ -82,7 +78,7 @@ final class Monitor: NSObject, ObservableObject {
     func printOnce() {
         _ = compute(now: Date())
         Thread.sleep(forTimeInterval: 3)
-        let (raw, battery, _, facts) = compute(now: Date())
+        let (raw, battery, facts) = compute(now: Date())
         self.battery = battery; self.scannedAt = Date()
         judge(raw, facts: facts, now: Date())
         let enc = JSONEncoder()
@@ -90,6 +86,9 @@ final class Monitor: NSObject, ObservableObject {
         enc.dateEncodingStrategy = .iso8601
         print(String(decoding: try! enc.encode(Status(scannedAt: Date(), battery: battery, items: items)), as: UTF8.self))
     }
+
+    /// Example rows for the README picture (see DemoRender).
+    func showDemo(_ demo: [Item]) { items = demo; scannedAt = Date() }
 
     /// Applies the alarm rules to a fresh scan and publishes it (main thread).
     func judge(_ raw: [Item], facts: Facts, now: Date) {
@@ -113,7 +112,7 @@ final class Monitor: NSObject, ObservableObject {
     /// For testing from Terminal: `Leftovers --stop <text>` stops the first leftover whose title contains it.
     func stopOnce(matching text: String) {
         _ = compute(now: Date()); Thread.sleep(forTimeInterval: 2)
-        let (raw, _, _, facts) = compute(now: Date())
+        let (raw, _, facts) = compute(now: Date())
         judge(raw, facts: facts, now: Date())
         guard let i = items.first(where: { $0.kind == .leftover && $0.title.contains(text) }) else { print("no match"); return }
         print("stopping", i.title, i.pids)
@@ -126,7 +125,7 @@ final class Monitor: NSObject, ObservableObject {
 
     struct Facts { var claudeWorking = false, simPanelActive = false }
 
-    private func compute(now: Date) -> ([Item], BatteryState, Double, Facts) {
+    private func compute(now: Date) -> ([Item], BatteryState, Facts) {
         var facts = Facts()
         let battery = SystemInfo.battery()
         let procs = ProcScan.allProcesses()
@@ -201,8 +200,8 @@ final class Monitor: NSObject, ObservableObject {
 
         var items: [Item] = []
         items += g.leftovers.map { familyItem($0, kind: .leftover) }
-        // Claude's own helpers (tool servers, shells) sit idle most of the time; only busy or serving ones are shown.
-        items += g.sessionJobs.map { familyItem($0, kind: .sessionJob) }.filter { $0.cpuPercent >= 2 || !$0.ports.isEmpty }
+        // A session's own work is its business; only servers are shown (they have an Open button).
+        items += g.sessionJobs.map { familyItem($0, kind: .sessionJob) }.filter { !$0.ports.isEmpty }
         items += g.appStarted.map { familyItem($0, kind: .appStarted) }.filter { $0.cpuPercent >= 2 || !$0.ports.isEmpty }
 
         // Simulators: everything running for that device (its launchd_sim family) counts toward it.
@@ -243,43 +242,23 @@ final class Monitor: NSObject, ObservableObject {
                               pids: [pid], started: since, keepKey: "sleep-\(who)"))
         }
 
-        // The Claude app's own cost, for comparison.
-        let appProcs = g.claudeApp + g.sessions
-        if !appProcs.isEmpty {
-            var watts = 0.0, cpu = 0.0
-            let sessionPids = Set(g.sessions.map(\.pid))
-            for p in appProcs {
-                let r = rate(p); watts += r.watts; cpu += r.cpu
-                // Claude's simulator panel streams frames while it is showing a simulator.
-                if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
-                // A session is working when its Claude Code process is busy...
-                if sessionPids.contains(p.pid), r.cpu >= 1 { facts.claudeWorking = true }
-            }
-            // ...or it was active in the last 10 minutes.
-            if sessions.sessions.values.contains(where: { now.timeIntervalSince($0.lastActivityAt) < 600 }) {
-                facts.claudeWorking = true
-            }
-            items.append(Item(id: "claude-app", kind: .claudeApp, title: "Claude",
-                              detail: "\(g.claudeApp.count) app processes · \(g.sessions.count) Claude Code session\(g.sessions.count == 1 ? "" : "s") active",
-                              command: Classifier.claudeAppMain, pids: appProcs.map(\.pid),
-                              started: appProcs.map(\.start).min() ?? now,
-                              cpuPercent: cpu, watts: watts, batteryPerHour: perHour(watts), keepKey: "claude"))
+        // The Claude app's own processes tell whether a session is working and whether Claude's simulator
+        // panel is showing (used by the rules; not shown as a row).
+        let sessionPids = Set(g.sessions.map(\.pid))
+        for p in g.claudeApp + g.sessions {
+            let r = rate(p)
+            // Claude's simulator panel streams frames while it is showing a simulator.
+            if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
+            // A session is working when its Claude Code process is busy...
+            if sessionPids.contains(p.pid), r.cpu >= 1 { facts.claudeWorking = true }
         }
-
-        // Leftovers' own cost, shown in the footer so it is easy to see it stays light. Averaged from a
-        // baseline taken after the busy first minute, so it reflects normal running (-1 = still measuring).
-        var own = -1.0
-        if let u = ProcScan.usage(getpid()) {
-            if let base = ownBaseline {
-                let dt = now.timeIntervalSince(base.at)
-                if dt >= 50 { own = max(0, (u.joules - base.joules) / dt) }
-            } else if now.timeIntervalSince(launchedAt) >= 60 {
-                ownBaseline = Sample(at: now, start: launchedAt, cpu: u.cpu, joules: u.joules)
-            }
+        // ...or it was active in the last 10 minutes.
+        if sessions.sessions.values.contains(where: { now.timeIntervalSince($0.lastActivityAt) < 600 }) {
+            facts.claudeWorking = true
         }
 
         previous = samples
-        return (items, battery, own, facts)
+        return (items, battery, facts)
     }
 
     private func writeStatus() {

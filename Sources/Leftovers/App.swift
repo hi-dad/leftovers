@@ -6,6 +6,9 @@ import SwiftUI
 enum LeftoversMain {
     static func main() {
         if CommandLine.arguments.contains("--once") { Monitor.shared.printOnce(); return }
+        if let i = CommandLine.arguments.firstIndex(of: "--render-demo"), i + 1 < CommandLine.arguments.count {
+            DemoRender.run(to: CommandLine.arguments[i + 1], settings: CommandLine.arguments.contains("--settings")); return
+        }
         if let i = CommandLine.arguments.firstIndex(of: "--stop"), i + 1 < CommandLine.arguments.count {
             Monitor.shared.stopOnce(matching: CommandLine.arguments[i + 1]); return
         }
