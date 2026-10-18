@@ -222,7 +222,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
     }
 
     @Test func oldQuietHelpersAreLeftToClaude() {
-        // Claude closes old chats itself (keeps at most 6), so a quiet one is never flagged, however old.
+        // Old quiet chats are never flagged, however old (only a pile-up or a loop is).
         #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 30 * hour), track: Track(firstSeen: now), ctx: ctx()).level == .none)
         #expect(Rules.helperPileup == 8)   // warn only beyond 7
     }
@@ -282,5 +282,20 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.judge(sim, track: Track(firstSeen: now), ctx: ctx(simUsedAgo: 45 * min)).level == .info)  // inactive
         let visited = item(.leftover, ports: [8000], connections: 1)
         #expect(Rules.judge(visited, track: Track(firstSeen: now), ctx: ctx()).level == .none)
+    }
+}
+
+@Suite struct Icons {
+    @Test func iconsShowTheKindOfThing() {
+        var stuck = item(.leftover); stuck.noun = "Video export"; stuck.verdict = Verdict(level: .alarm, tag: "Looks stuck")
+        #expect(Describe.icon(stuck) == "arrow.triangle.2.circlepath")   // loops share one icon
+        stuck.verdict = Verdict(level: .warn, tag: "Forgotten")
+        #expect(Describe.icon(stuck) == "film")
+        var build = item(.leftover); build.noun = "App build"
+        #expect(Describe.icon(build) == "hammer")
+        #expect(Describe.icon(item(.appStarted, ports: [5173])) == "globe")
+        #expect(Describe.icon(item(.simulator)) == "iphone")
+        var chat = item(.chatHelper); chat.verdict = Verdict(level: .warn, tag: "Stuck")
+        #expect(Describe.icon(chat) == "arrow.triangle.2.circlepath")
     }
 }

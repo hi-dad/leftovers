@@ -139,7 +139,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func fitDrop() {
         guard let h = dropHost, let p = drop, let b = item.button, let bw = b.window else { return }
-        let height = ceil(h.fittingSize.height)
+        // Never taller than the screen: the list inside scrolls instead.
+        let maxHeight = (bw.screen?.visibleFrame.height ?? NSScreen.main?.visibleFrame.height ?? 900) - 24
+        let height = min(ceil(h.fittingSize.height), maxHeight)
         guard height > 0 else { return }
         let icon = bw.convertToScreen(b.convert(b.bounds, to: nil))
         let screen = bw.screen?.visibleFrame ?? NSScreen.main!.visibleFrame

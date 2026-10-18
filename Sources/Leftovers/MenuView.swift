@@ -7,6 +7,11 @@ final class UIState: ObservableObject {
     static let shared = UIState()
     @Published var showSettings = false
     var expandID: String?   // pictures only: open this row's Details
+
+    /// Tells the dropdown to re-measure itself (row Details opening or closing changes its height).
+    func contentChanged() {
+        DispatchQueue.main.async { self.objectWillChange.send() }
+    }
     var tallForPicture = false   // README picture only: no scrolling
 }
 
@@ -141,22 +146,8 @@ struct ItemRow: View {
         _expanded = State(initialValue: expanded)
     }
 
-    var icon: String {
-        switch item.kind {
-        case .leftover: item.ports.isEmpty ? "exclamationmark.triangle" : "globe"
-        case .sessionJob, .appStarted: "globe"
-        case .simulator: "iphone"
-        case .android: "smartphone"
-        case .sleepHold: "moon.zzz"
-        case .claudePreview: "play.rectangle"
-        case .spotlight: "magnifyingglass"
-        case .cloudSync: "icloud.and.arrow.up"
-        case .browserTab: "safari"
-        case .chatHelper: "bubble.left"
-        case .helperPileup: "square.stack.3d.up"
-        case .chromeExtension: "puzzlepiece.extension"
-        }
-    }
+    /// The icon says what kind of thing it is (loop, script, build, website, phone…); its color says how serious.
+    var icon: String { Describe.icon(item) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -198,6 +189,7 @@ struct ItemRow: View {
                 Spacer()
                 Button {
                     expanded.toggle()
+                    UIState.shared.contentChanged()
                 } label: {
                     HStack(spacing: 3) {
                         Text("Details")
@@ -271,7 +263,8 @@ struct ItemRow: View {
             rows.append(("Battery", String(format: "~%.1f%% an hour (%.0f%% CPU)", b, item.cpuPercent)))
         }
         return VStack(alignment: .leading, spacing: 3) {
-            ForEach(rows, id: \.0) { k, v in
+            ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
+                let (k, v) = row
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(k).foregroundStyle(.secondary).frame(width: 120, alignment: .leading)
                     Text(v).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)

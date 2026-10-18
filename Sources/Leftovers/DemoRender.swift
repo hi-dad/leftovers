@@ -37,6 +37,7 @@ enum DemoRender {
             let (rows, expand) = examples(scenario, item: item, stuck: stuck, loop: loop, sim: sim, site: site)
             demo = rows
             UIState.shared.expandID = expand ? (scenario == "claude" ? "Claude app windows" : rows.first?.id) : nil
+            if scenario == "chats" { UIState.shared.expandID = "9 chat helpers" }
         }
         UIState.shared.tallForPicture = true
         // Fill in the subheaders the way the live app does, from a made-up recent history.
@@ -95,7 +96,7 @@ enum DemoRender {
             var tab = make(.browserTab, "Zom-Zom", hours: 3, perHour: 0, .warn, "Tab busy", project: "zom-zom", noun: "Chrome tab")
             tab.command = "http://localhost:8000/"; tab.batteryPerHour = nil
             return ([sim, emu, tab], false)
-        case "claude":
+        case "claude", "chats":
             var chat = make(.chatHelper, "Project ideas", hours: 0.33, perHour: 6, .warn, "Stuck", noun: "Chat helper")
             chat.memoryMB = 240; chat.idleSince = now.addingTimeInterval(-3 * 3600)
             var pile = make(.helperPileup, "9 chat helpers", hours: 0, perHour: 0, .warn, "Pile-up", noun: "Chat helpers")
@@ -108,7 +109,7 @@ enum DemoRender {
             var preview = make(.claudePreview, "Claude app windows", hours: 0.67, perHour: 4, .warn, "Busy preview", noun: "Claude app")
             preview.cpuPercent = 42
             preview.notes = ["Busiest part: a side panel or preview (38% CPU)", "Claude windows on screen: 2", "Claude in front: no (busy in the background)"]
-            return ([hold, chat, pile, preview], name == "claude")
+            return name == "chats" ? ([pile], false) : ([hold, chat, pile, preview], name == "claude")
         case "system":
             var spot = make(.spotlight, "Spotlight indexing", hours: 0.33, perHour: 0, .warn, "Indexing", noun: "Spotlight")
             spot.apps = ["~/Desktop/claude/prayer-circle/node_modules", "~/Desktop/claude/snail-house/node_modules",

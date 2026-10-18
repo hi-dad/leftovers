@@ -14,6 +14,8 @@ Claude Code often starts background work: builds, video encodes, dev servers, iP
 
 At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Problems come first, then two quieter lists: **Running · inactive** (nothing is using it; stop it before it wastes battery) and **Running · in use**.
 
+Each row's icon shows what kind of thing it is (↻ stuck in a loop, terminal = script, hammer = build, globe = test website, phone = simulator, and so on), and its color shows how serious it is.
+
 Every row reads the same way:
 - **Title:** what it is, in plain words, e.g. *"Python script stuck in zom-zom"* or *"iPhone simulator running StoryboardAR"*.
 - **Subheader:** how long it's been going and when it last did something, e.g. *"Running 2 days · last change 47 h ago"* or *"Busy 20 min · last message 3 h ago"*.
@@ -31,8 +33,8 @@ Every row reads the same way:
 | **Claude app previews** | The Claude app drawing hard while no chat is working, usually an animated preview or artifact left open. | Open Claude |
 | **Spotlight** | Spotlight busy indexing Claude's freshly made build folders (node_modules, .build…). | Open Spotlight settings |
 | **Cloud sync** | iCloud/OneDrive/Dropbox busy uploading Claude's build folders. | Show folder |
-| **Claude chat stuck** | A chat's helper program says it's idle but keeps the CPU busy (a known Claude Code bug). | Close |
-| **Too many chats loaded** | More than 7 chat helpers at once. Claude normally keeps at most 6 and closes the oldest itself, so this means that broke (a known bug that can reach 150). | Quit Claude |
+| **Claude chat stuck in a loop** | A chat's helper program says it's idle but keeps the CPU busy (a known Claude Code bug). | Close |
+| **Too many chats loaded** | Many chat helpers loaded at once. Claude pre-loads at most 6 on its own, but every chat you open stays loaded until memory runs low, and a known bug has let them reach 150. | (fix shown) |
 | **Chrome extension spinning** | A Chrome extension busy in the background for 10+ minutes (Claude in Chrome has had this bug). | Open Chrome extensions |
 
 

@@ -35,7 +35,8 @@ struct RuleContext {
 
 /// Decides how worried to be about each row. Pure, so every rule is tested.
 enum Rules {
-    /// The Claude app keeps at most 6 chats loaded (its log says "cap=6"), so more than 7 means that limit broke.
+    /// Claude pre-loads at most 6 chats on its own (its log: "cap=6"), but every chat you open stays loaded until
+    /// memory runs low, so this counts how many are loaded at once.
     static let helperPileup = 8
 
     static func isHeavy(_ i: Item) -> Bool { i.cpuPercent >= 15 || (i.batteryPerHour ?? 0) >= 2 }
@@ -89,7 +90,7 @@ enum Rules {
         case .chatHelper:
             parts = i.busy ? ["Working now"] : [busy, "last message " + (ago(i.idleSince) ?? "a while ago")]
         case .helperPileup:
-            parts = ["\(i.apps.count) chats loaded", "limit is 6", String(format: "%.1f GB of memory", (i.memoryMB ?? 0) / 1024)]
+            parts = ["\(i.apps.count) chats loaded", String(format: "%.1f GB of memory", (i.memoryMB ?? 0) / 1024)]
         case .claudePreview:
             parts = [busy, "last Claude work " + (ago(ctx.lastClaudeWorking) ?? "a while ago")]
         case .spotlight, .cloudSync:
@@ -196,7 +197,7 @@ enum Rules {
 
         case .helperPileup:
             return Verdict(level: .warn, tag: "Pile-up",
-                           message: "The Claude app has \(i.title) loaded, though it normally keeps at most 6 and closes the oldest. They hold about \(String(format: "%.1f", (i.memoryMB ?? 0) / 1024)) GB of memory. Quitting and reopening Claude clears them.")
+                           message: "The Claude app has \(i.title) loaded. They hold about \(String(format: "%.1f", (i.memoryMB ?? 0) / 1024)) GB of memory. Quitting and reopening Claude clears them.")
 
         case .chromeExtension:
             if isHeavy(i), heavyFor >= 10 * min * scale {

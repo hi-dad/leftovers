@@ -202,6 +202,30 @@ enum Describe {
         }
     }
 
+    /// Category icon (SF Symbols): anything stuck in a loop shares one icon; otherwise it shows the kind of thing.
+    static func icon(_ i: Item) -> String {
+        if ["Looks stuck", "Stuck", "Spinning"].contains(i.verdict.tag) { return "arrow.triangle.2.circlepath" }
+        switch i.kind {
+        case .simulator: return "iphone"
+        case .android: return "smartphone"
+        case .browserTab: return "safari"
+        case .sleepHold: return "moon.zzz"
+        case .chatHelper, .helperPileup: return "bubble.left.and.bubble.right"
+        case .claudePreview: return "macwindow"
+        case .spotlight: return "magnifyingglass"
+        case .cloudSync: return "icloud.and.arrow.up"
+        case .chromeExtension: return "puzzlepiece.extension"
+        case .leftover, .appStarted, .sessionJob: break
+        }
+        if !i.ports.isEmpty || i.noun == "Test website" { return "globe" }
+        switch i.noun {
+        case "Video export": return "film"
+        case "App build": return "hammer"
+        case "Keep-awake command": return "moon.zzz"
+        default: return "terminal"
+        }
+    }
+
     /// One short line under each row: whether stopping it is safe (or what it breaks), or the fix when there's
     /// nothing to stop. ("Safe to stop", "its Claude chat already finished")
     static func advice(_ i: Item) -> (label: String, text: String)? {
