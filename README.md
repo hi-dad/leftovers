@@ -20,6 +20,13 @@ At the top there's always a clear answer: a green **All clear**, or **"2 things 
 | **Keeping your Mac awake** | Only when it's a problem: on battery, while Claude isn't working. | Open Claude |
 | **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Keep |
 | **Started by the Claude app** / **Running in a Claude session** | Dev/preview servers, with whether anyone is connected. | Open · Stop |
+| **Android emulators** | Treated like iPhone simulators. | Shut down · Keep |
+| **Chrome tabs** | Tabs showing Claude's test pages (localhost or project files), when you haven't used Chrome for a while. | Close tab · Keep |
+| **Claude app previews** | The Claude app drawing hard while no chat is working, usually an animated preview or artifact left open. | Open Claude |
+| **Spotlight** | Spotlight busy indexing Claude's freshly made build folders (node_modules, .build…). | Open Spotlight settings |
+| **Cloud sync** | iCloud/OneDrive/Dropbox busy uploading Claude's build folders. | Show folder |
+
+Every row says what its button does ("If you stop it: only the test website stops…"), so you know nothing important breaks. Leftovers watches Claude's scratch folders and **every folder a Claude chat has worked in** automatically. You can add more in Settings.
 
 Claude keeping your Mac awake *while it works* is intended, so that isn't shown.
 
@@ -44,7 +51,7 @@ On battery, all waits are cut in half. Each problem is announced once, with **St
 ## Privacy & permissions
 
 - Fully offline. It reads the process list, battery info and the Claude app's session titles on your Mac. Nothing leaves the computer.
-- The only permission it asks for is the standard one for notifications.
+- Permissions (standard macOS prompts): notifications; Chrome tab addresses (only while Chrome is open, for the tab check); Desktop folder dates (only when Spotlight or cloud sync is busy).
 - It only looks at processes that came from Claude, or that run inside Claude's scratch folders or your project folders (Settings → Project folders; default `~/Desktop/claude`). It never touches your normal apps.
 - It's very light: about 0.02% of the battery per hour. It checks every minute on battery and every 3 minutes when plugged in.
 
