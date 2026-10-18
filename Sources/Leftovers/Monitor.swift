@@ -110,12 +110,12 @@ final class Monitor: NSObject, ObservableObject {
         tracks = newTracks
     }
 
-    /// For testing from Terminal: `Leftovers --stop <text>` stops the first leftover whose title contains it.
+    /// For testing from Terminal: `Leftovers --stop <text>` stops (or closes) the first row whose title contains it.
     func stopOnce(matching text: String) {
         _ = compute(now: Date()); Thread.sleep(forTimeInterval: 2)
         let (raw, _, facts) = compute(now: Date())
         judge(raw, facts: facts, now: Date())
-        guard let i = items.first(where: { $0.kind == .leftover && $0.title.contains(text) }) else { print("no match"); return }
+        guard let i = items.first(where: { canStop($0) && $0.title.contains(text) }) else { print("no match"); return }
         print("stopping", i.title, i.pids)
         stop(i)
         RunLoop.main.run(until: Date().addingTimeInterval(7))
@@ -343,7 +343,9 @@ final class Monitor: NSObject, ObservableObject {
 
         // #14 Chrome tabs showing Claude's test pages. Chrome's page processes' total use is attached, since
         // Chrome doesn't say which tab uses what.
-        if procs.contains(where: { $0.name == "Google Chrome" && $0.path.hasPrefix("/Applications/") }) {
+        // (LEFTOVERS_NO_CHROME=1 skips this when testing from Terminal, so macOS doesn't ask Terminal for Chrome access.)
+        if ProcessInfo.processInfo.environment["LEFTOVERS_NO_CHROME"] == nil,
+           procs.contains(where: { $0.name == "Google Chrome" && $0.path.hasPrefix("/Applications/") }) {
             // Page processes only (extension processes are checked on their own below).
             let renderers = procs.filter { $0.path.contains("Google Chrome") && $0.name.contains("Renderer")
                 && !$0.args.contains("--extension-process") }
