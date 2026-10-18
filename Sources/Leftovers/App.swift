@@ -7,7 +7,9 @@ enum LeftoversMain {
     static func main() {
         if CommandLine.arguments.contains("--once") { Monitor.shared.printOnce(); return }
         if let i = CommandLine.arguments.firstIndex(of: "--render-demo"), i + 1 < CommandLine.arguments.count {
-            DemoRender.run(to: CommandLine.arguments[i + 1], settings: CommandLine.arguments.contains("--settings")); return
+            let args = CommandLine.arguments
+            let scenario = args.firstIndex(of: "--scenario").flatMap { $0 + 1 < args.count ? args[$0 + 1] : nil }
+            DemoRender.run(to: args[i + 1], settings: args.contains("--settings"), scenario: scenario); return
         }
         if let i = CommandLine.arguments.firstIndex(of: "--stop"), i + 1 < CommandLine.arguments.count {
             Monitor.shared.stopOnce(matching: CommandLine.arguments[i + 1]); return

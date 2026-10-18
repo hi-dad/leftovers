@@ -248,7 +248,9 @@ enum Describe {
         case .claudePreview:
             return ("What to do", "In Claude, close any preview, artifact or browser panel you're not using. Your chats and files aren't affected.")
         case .spotlight:
-            return ("What to do", "In Spotlight settings, open Search Privacy and add the folder below. Spotlight then skips Claude's build files. (You won't find those project files in Spotlight search.)")
+            // The projects folder is two levels above a build folder (~/Desktop/claude/<project>/node_modules).
+            let root = i.apps.first.map { (($0 as NSString).deletingLastPathComponent as NSString).deletingLastPathComponent } ?? "your Claude projects folder"
+            return ("What to do", "In Spotlight settings, open Search Privacy and add \(root). Spotlight then skips Claude's build files. (You won't find those project files in Spotlight search.)")
         case .cloudSync:
             return ("What to do", "Move Claude's projects out of the synced folder (for example to ~/Developer), so build files stop uploading. Nothing is deleted.")
         case .sleepHold:
