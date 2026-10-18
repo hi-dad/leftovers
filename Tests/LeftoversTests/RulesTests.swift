@@ -224,7 +224,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
     @Test func oldQuietHelpersAreLeftToClaude() {
         // Old quiet chats are never flagged, however old (only a pile-up or a loop is).
         #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 30 * hour), track: Track(firstSeen: now), ctx: ctx()).level == .none)
-        #expect(Rules.helperPileup == 8)   // warn only beyond 7
+        #expect(Rules.helperPileup == 15)
     }
 
     @Test func pileupAndExtensions() {

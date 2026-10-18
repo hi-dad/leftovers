@@ -37,7 +37,7 @@ struct RuleContext {
 enum Rules {
     /// Claude pre-loads at most 6 chats on its own (its log: "cap=6"), but every chat you open stays loaded until
     /// memory runs low, so this counts how many are loaded at once.
-    static let helperPileup = 8
+    static let helperPileup = 15
 
     static func isHeavy(_ i: Item) -> Bool { i.cpuPercent >= 15 || (i.batteryPerHour ?? 0) >= 2 }
 

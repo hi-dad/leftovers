@@ -34,7 +34,7 @@ Every row reads the same way:
 | **Spotlight** | Spotlight busy indexing Claude's freshly made build folders (node_modules, .build…). | Open Spotlight settings |
 | **Cloud sync** | iCloud/OneDrive/Dropbox busy uploading Claude's build folders. | Show folder |
 | **Claude chat stuck in a loop** | A chat's helper program says it's idle but keeps the CPU busy (a known Claude Code bug). | Close |
-| **Too many chats loaded** | Many chat helpers loaded at once. Claude pre-loads at most 6 on its own, but every chat you open stays loaded until memory runs low, and a known bug has let them reach 150. | (fix shown) |
+| **Too many chats loaded** | 15 or more chat helpers loaded at once. Claude pre-loads at most 6 on its own, but every chat you open stays loaded until memory runs low, and a known bug has let them reach 150. | (fix shown) |
 | **Chrome extension spinning** | A Chrome extension busy in the background for 10+ minutes (Claude in Chrome has had this bug). | Open Chrome extensions |
 
 
