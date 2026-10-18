@@ -187,7 +187,7 @@ enum Describe {
         case .chatHelper:
             return i.verdict.tag == "Stuck" ? "Claude chat stuck: “\(i.title)”" : "“\(i.title)”"
         case .helperPileup:
-            return "The Claude app has \(i.title) open"
+            return "Too many Claude chats loaded (\(i.apps.count))"
         case .chromeExtension:
             return "A Chrome extension keeps working in the background"
         case .appStarted, .sessionJob:
@@ -210,7 +210,7 @@ enum Describe {
             if tag == "Stuck" { return "Busy although the chat is idle" }
             if tag == "Kept" { return "You chose to keep this" }
             let idle = duration(now.timeIntervalSince(i.idleSince ?? i.started))
-            return i.verdict.level == .info ? "Not used in \(idle)" : "Idle for \(idle)"
+            return "Idle for \(idle)"
         }
         switch true {
         case tag == "Kept": return "You chose to keep this running"
@@ -226,7 +226,7 @@ enum Describe {
             return i.apps.prefix(2).map { ($0 as NSString).lastPathComponent == $0 ? $0 : (($0 as NSString).deletingLastPathComponent as NSString).lastPathComponent + "/" + ($0 as NSString).lastPathComponent }.joined(separator: ", ") + (i.apps.count > 2 ? " and \(i.apps.count - 2) more" : "")
         case tag == "Working": return "Working now"
         case tag == "Stuck": return "Busy although the chat is idle"
-        case tag == "Pile-up": return String(format: "Far more than the chats you use · about %.1f GB of memory", (i.memoryMB ?? 0) / 1024)
+        case tag == "Pile-up": return String(format: "Claude normally keeps at most 6 · about %.1f GB of memory", (i.memoryMB ?? 0) / 1024)
         case tag == "Spinning": return "Busy for \(duration(now.timeIntervalSince(i.started))) with nothing to do"
         case tag == "Tab busy": return "Chrome is busy and you haven't used it in a while"
         case tag == "Open tab": return i.apps.contains("server stopped") ? "Its test website has stopped, so the tab can go" : "Open, but you haven't used Chrome in a while"

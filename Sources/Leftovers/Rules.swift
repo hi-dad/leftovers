@@ -35,6 +35,9 @@ struct RuleContext {
 
 /// Decides how worried to be about each row. Pure, so every rule is tested.
 enum Rules {
+    /// The Claude app keeps at most 6 chats loaded (its log says "cap=6"), so more than 7 means that limit broke.
+    static let helperPileup = 8
+
     static func isHeavy(_ i: Item) -> Bool { i.cpuPercent >= 15 || (i.batteryPerHour ?? 0) >= 2 }
 
     /// When this row became heavy, carried over from the last scan. A process that has averaged
@@ -145,12 +148,12 @@ enum Rules {
                 return Verdict(level: .warn, tag: "Stuck",
                                message: "The helper for your “\(i.title)” chat has been busy for \(Describe.duration(heavyFor)) although the chat is idle.\(cost)")
             }
-            if idle >= 6 * hour { return Verdict(level: .info, tag: "Not used in \(Describe.duration(idle))") }
+            // Old idle chats are fine: Claude keeps up to 6 loaded and closes the oldest itself.
             return Verdict(level: .none, tag: "Idle \(Describe.duration(idle))")
 
         case .helperPileup:
             return Verdict(level: .warn, tag: "Pile-up",
-                           message: "The Claude app has \(i.title) open, holding about \(Int((i.memoryMB ?? 0) / 1024 * 10) / 10) GB of memory. Quitting and reopening Claude clears them.")
+                           message: "The Claude app has \(i.title) loaded, though it normally keeps at most 6 and closes the oldest. They hold about \(String(format: "%.1f", (i.memoryMB ?? 0) / 1024)) GB of memory. Quitting and reopening Claude clears them.")
 
         case .chromeExtension:
             if isHeavy(i), heavyFor >= 10 * min * scale {

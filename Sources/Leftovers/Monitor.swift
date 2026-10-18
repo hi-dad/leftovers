@@ -278,13 +278,13 @@ final class Monitor: NSObject, ObservableObject {
                                     busy: info?.busy ?? false))
         }
         items += helperItems
-        // Far more helpers than anyone has chats open: the Claude app is failing to close old ones.
-        if helperItems.count >= 15 {
+        // More than the app's own limit allows: it is failing to close old ones.
+        if helperItems.count >= Rules.helperPileup {
             let mem = helperItems.compactMap(\.memoryMB).reduce(0, +)
             items.append(Item(id: "helper-pileup", kind: .helperPileup, title: "\(helperItems.count) chat helpers",
                               detail: "", command: "", pids: helperItems.flatMap(\.pids), started: now,
                               cpuPercent: helperItems.map(\.cpuPercent).reduce(0, +), keepKey: "helper-pileup",
-                              noun: "Chat helpers", memoryMB: mem))
+                              noun: "Chat helpers", apps: helperItems.map(\.title), memoryMB: mem))
         }
         // Chats active in the last 10 minutes count as working too (covers helpers that write no status).
         if sessions.sessions.values.contains(where: { now.timeIntervalSince($0.lastActivityAt) < 600 }) {

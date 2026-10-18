@@ -223,9 +223,10 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.judge(helper(cpu: 100, busy: false, idleFor: 2 * min), track: heavyTrack(for: 30 * min), ctx: ctx()).level < .warn)
     }
 
-    @Test func oldQuietHelpersAreMarked() {
-        #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 12 * hour), track: Track(firstSeen: now), ctx: ctx()).tag == "Not used in 12 h")
-        #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 20 * min), track: Track(firstSeen: now), ctx: ctx()).level == .none)
+    @Test func oldQuietHelpersAreLeftToClaude() {
+        // Claude closes old chats itself (keeps at most 6), so a quiet one is never flagged, however old.
+        #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 30 * hour), track: Track(firstSeen: now), ctx: ctx()).level == .none)
+        #expect(Rules.helperPileup == 8)   // warn only beyond 7
     }
 
     @Test func pileupAndExtensions() {
@@ -254,8 +255,8 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
 @Suite struct HelperWording {
     @Test func helperReasons() {
         var h = item(.chatHelper); h.idleSince = now.addingTimeInterval(-19 * hour)
-        h.verdict = Verdict(level: .info, tag: "Not used in 19 h")
-        #expect(Describe.reason(h, now: now) == "Not used in 19 h")
+        h.verdict = Verdict(level: .none, tag: "Idle 19 h")
+        #expect(Describe.reason(h, now: now) == "Idle for 19 h")
         h.idleSince = now.addingTimeInterval(-18 * min); h.verdict = Verdict(level: .none, tag: "Idle 18 min")
         #expect(Describe.reason(h, now: now) == "Idle for 18 min")
         h.busy = true

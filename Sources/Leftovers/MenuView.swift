@@ -8,7 +8,6 @@ final class UIState: ObservableObject {
     @Published var showSettings = false
     var expandFirst = false   // README picture only
     var tallForPicture = false   // README picture only: no scrolling
-    @Published var showHelpers = false
 }
 
 struct MenuView: View {
@@ -52,8 +51,6 @@ struct MenuView: View {
             VStack(alignment: .leading, spacing: 10) {
                 StatusBanner(attention: shown.filter { $0.verdict.level >= .warn }, others: shown.count)
                 ForEach(sorted) { ItemRow(item: $0, expanded: ui.expandFirst && $0.id == sorted.first?.id) }
-                let helpers = m.items.filter { $0.kind == .chatHelper && $0.verdict.level < .warn }
-                if !helpers.isEmpty { HelpersSection(helpers: helpers) }
             }
             .padding(12)
         }
@@ -241,10 +238,13 @@ struct ItemRow: View {
             for (n, f) in item.apps.enumerated() { rows.append((n == 0 ? "Build folders" : " ", f)) }
         case .claudePreview:
             rows.append(("Claude windows", String(format: "%.0f%% CPU", item.cpuPercent)))
-        case .chatHelper, .helperPileup:
+        case .chatHelper:
             rows.append(("Chat", item.title))
             if let mb = item.memoryMB { rows.append(("Memory", String(format: "%.0f MB", mb))) }
             rows.append(("Running for", Describe.duration(now.timeIntervalSince(item.started))))
+        case .helperPileup:
+            if let mb = item.memoryMB { rows.append(("Memory", String(format: "%.1f GB in total", mb / 1024))) }
+            for (n, chat) in item.apps.enumerated() { rows.append((n == 0 ? "Chats loaded" : " ", chat)) }
         case .chromeExtension:
             rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
             rows.append(("Running for", Describe.duration(now.timeIntervalSince(item.started))))
@@ -356,72 +356,3 @@ struct ItemRow: View {
     }
 }
 
-/// The chats whose helper programs are loaded, folded up by default. Normally a handful that Claude
-/// closes on its own; this is where you can close ones you're done with.
-struct HelpersSection: View {
-    let helpers: [Item]
-    @ObservedObject var ui = UIState.shared
-    @EnvironmentObject var m: Monitor
-
-    private var oldCount: Int { helpers.filter { $0.verdict.level == .info }.count }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Button {
-                ui.showHelpers.toggle()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: ui.showHelpers ? "chevron.down" : "chevron.right")
-                        .font(.system(size: 9, weight: .semibold))
-                    Text("Chats loaded in the background (\(helpers.count))").font(.system(size: 11, weight: .semibold))
-                    if oldCount > 0 {
-                        Text("\(oldCount) not used lately").font(.system(size: 11)).foregroundStyle(.orange)
-                    }
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-            if ui.showHelpers {
-                Text("Each Claude chat you've opened recently keeps a small helper loaded so it answers instantly. Idle ones use almost no battery, only memory. Close the ones you're done with.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                ForEach(helpers.sorted { ($0.busy ? 0 : 1, $0.idleSince ?? .distantPast) < ($1.busy ? 0 : 1, $1.idleSince ?? .distantPast) }) { h in
-                    HelperRow(item: h)
-                }
-            }
-        }
-        .padding(.top, 4)
-    }
-}
-
-struct HelperRow: View {
-    let item: Item
-    @EnvironmentObject var m: Monitor
-    @State private var closing = false
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: item.busy ? "bubble.left.fill" : "bubble.left")
-                .foregroundStyle(item.busy ? Color.accentColor : .secondary)
-                .frame(width: 18)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.title).font(.system(size: 12, weight: .medium)).lineLimit(1)
-                Text(Describe.reason(item) + (item.memoryMB.map { String(format: " · %.0f MB", $0) } ?? ""))
-                    .font(.caption)
-                    .foregroundStyle(item.verdict.level == .info ? Color.orange : Color.secondary)
-            }
-            Spacer()
-            if !item.busy {
-                Button(closing ? "Closing…" : "Close") { closing = true; m.stop(item) }
-                    .buttonStyle(.borderless)
-                    .font(.system(size: 11, weight: .medium))
-                    .disabled(closing)
-                    .help(Describe.advice(item)?.text ?? "")
-            }
-        }
-        .padding(.vertical, 5).padding(.horizontal, 8)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
-    }
-}

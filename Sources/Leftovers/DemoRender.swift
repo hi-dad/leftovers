@@ -30,20 +30,7 @@ enum DemoRender {
         var site = item(.appStarted, "Dev server (Vite) on port 5173", "", hours: 3, perHour: 0.2,
                         verdict: Verdict(level: .info, tag: "Idle 2 h"), project: "pokemon-silverwind", ports: [5173])
         site.noun = "Test website"
-        func helper(_ name: String, idleHours: Double?, mb: Double, tag: String, level: Level) -> Item {
-            var h = item(.chatHelper, name, "", hours: 20, perHour: 0, verdict: Verdict(level: level, tag: tag))
-            h.busy = idleHours == nil; h.memoryMB = mb
-            h.idleSince = idleHours.map { now.addingTimeInterval(-$0 * 3600) }
-            return h
-        }
-        let demo = settings ? [stuck, loop, sim, site] : [
-            stuck, sim,
-            helper("Leftovers battery app", idleHours: nil, mb: 231, tag: "Working", level: .none),
-            helper("DesktopCatProject setup", idleHours: 19, mb: 173, tag: "Not used in 19 h", level: .info),
-            helper("Scheduled actions architecture", idleHours: 8, mb: 157, tag: "Not used in 8 h", level: .info),
-            helper("Snail House levels", idleHours: 0.3, mb: 150, tag: "Idle 18 min", level: .none),
-        ]
-        UIState.shared.showHelpers = !settings
+        let demo = [stuck, loop, sim, site]
         UIState.shared.expandFirst = false
         UIState.shared.tallForPicture = true
         Monitor.shared.showDemo(demo)
