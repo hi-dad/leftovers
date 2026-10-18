@@ -50,6 +50,23 @@ extension Monitor {
         rejudge()
     }
 
+    func openInBrowser(_ i: Item) {
+        guard let port = i.ports.first, let url = URL(string: "http://localhost:\(port)") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    func showFolder(_ i: Item) {
+        guard let f = i.folder else { return }
+        NSWorkspace.shared.open(URL(fileURLWithPath: f, isDirectory: true))
+    }
+
+    /// Battery use (% an hour) of the things you stopped in the last 7 days.
+    var freedThisWeek: (count: Int, perHour: Double) {
+        let week = stopLog.filter { $0.at > Date().addingTimeInterval(-7 * 86400) }
+        let cap = battery.capacityWh
+        return (week.count, cap > 0 ? week.map(\.watts).reduce(0, +) / cap * 100 : 0)
+    }
+
     func openClaude() {
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Claude.app"),
                                            configuration: NSWorkspace.OpenConfiguration())

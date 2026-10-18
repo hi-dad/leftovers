@@ -8,7 +8,7 @@ final class Monitor: NSObject, ObservableObject {
     @Published private(set) var items: [Item] = []
     @Published private(set) var battery = SystemInfo.battery()
     @Published private(set) var scannedAt: Date?
-    @Published private(set) var ownWatts: Double = 0
+    @Published private(set) var ownWatts: Double = -1
     /// Called on the main thread after each scan, with whether the Mac was on battery before it.
     var onScanned: ((Bool) -> Void)?
 
@@ -28,6 +28,8 @@ final class Monitor: NSObject, ObservableObject {
 
     private let queue = DispatchQueue(label: "leftovers.scan", qos: .utility)
     private var previous: [pid_t: Sample] = [:]
+    private var ownBaseline: Sample?
+    private let launchedAt = Date()
     private var timer: Timer?
     private var scanning = false
 
@@ -176,7 +178,7 @@ final class Monitor: NSObject, ObservableObject {
             var item = Item(id: "\(kind.rawValue)-\(root.pid)-\(Int(root.start.timeIntervalSince1970))",
                             kind: kind, title: title, detail: "", command: main.commandLine,
                             session: match?.session.title, sessionGuessed: match?.guessed ?? false,
-                            project: classifier.project(for: root.cwd), pids: fam.map(\.pid), started: root.start,
+                            project: classifier.project(for: root.cwd), folder: root.cwd.isEmpty ? nil : root.cwd, pids: fam.map(\.pid), started: root.start,
                             cpuPercent: st.cpu, watts: st.watts, batteryPerHour: perHour(st.watts),
                             ports: st.ports, connections: st.connections,
                             lastOutput: st.writes.map(\.modified).max(), averageCpu: st.average,
@@ -264,14 +266,16 @@ final class Monitor: NSObject, ObservableObject {
                               cpuPercent: cpu, watts: watts, batteryPerHour: perHour(watts), keepKey: "claude"))
         }
 
-        // Leftovers' own cost, shown in the footer so it is easy to see it stays light.
-        let me = getpid()
-        var own = 0.0
-        if let u = ProcScan.usage(me) {
-            if let old = previous[me], now.timeIntervalSince(old.at) > 1 {
-                own = max(0, (u.joules - old.joules) / now.timeIntervalSince(old.at))
+        // Leftovers' own cost, shown in the footer so it is easy to see it stays light. Averaged from a
+        // baseline taken after the busy first minute, so it reflects normal running (-1 = still measuring).
+        var own = -1.0
+        if let u = ProcScan.usage(getpid()) {
+            if let base = ownBaseline {
+                let dt = now.timeIntervalSince(base.at)
+                if dt >= 50 { own = max(0, (u.joules - base.joules) / dt) }
+            } else if now.timeIntervalSince(launchedAt) >= 60 {
+                ownBaseline = Sample(at: now, start: launchedAt, cpu: u.cpu, joules: u.joules)
             }
-            samples[me] = Sample(at: now, start: Date.distantPast, cpu: u.cpu, joules: u.joules)
         }
 
         previous = samples

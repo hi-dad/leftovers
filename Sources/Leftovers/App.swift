@@ -58,7 +58,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         m.start()
         // For screenshots in testing: `open Leftovers.app --args -openOnLaunch YES`.
         if UserDefaults.standard.bool(forKey: "openOnLaunch") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { self.openDrop() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) {
+                UIState.shared.showSettings = UserDefaults.standard.bool(forKey: "openSettings")
+                self.openDrop()
+            }
         }
     }
 
@@ -100,7 +103,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             fx.wantsLayer = true; fx.layer?.cornerRadius = 12; fx.layer?.masksToBounds = true
             let h = NSHostingView(rootView: MenuView().environmentObject(m))
             dropHost = h
-            m.objectWillChange.sink { [weak self] _ in DispatchQueue.main.async { self?.fitDrop() } }.store(in: &watchers)
+            m.objectWillChange.merge(with: UIState.shared.objectWillChange)
+                .sink { [weak self] _ in DispatchQueue.main.async { self?.fitDrop() } }.store(in: &watchers)
             h.autoresizingMask = [.width, .height]
             fx.addSubview(h)
             p.contentView = fx
@@ -119,6 +123,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func closeDrop() {
         if drop?.isVisible == true { lastClose = Date() }
+        UIState.shared.showSettings = false
         drop?.orderOut(nil)
         item.button?.highlight(false)
         if let c = clickMonitor { NSEvent.removeMonitor(c); clickMonitor = nil }

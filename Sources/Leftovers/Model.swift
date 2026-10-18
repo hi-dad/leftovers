@@ -59,6 +59,7 @@ struct Item: Identifiable, Codable, Equatable {
     var session: String?          // title of the Claude session that started it
     var sessionGuessed = false    // matched by folder + time rather than an exact id
     var project: String?
+    var folder: String?           // working folder of the root process
     var pids: [pid_t]
     var started: Date
     var cpuPercent: Double = 0

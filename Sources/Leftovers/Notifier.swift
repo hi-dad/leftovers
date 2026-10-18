@@ -39,6 +39,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     }
 
     private func afterScan(wasOnBattery: Bool) {
+        guard UserDefaults.standard.object(forKey: "notify") as? Bool ?? true else { return }
         let quiet = m.battery.lowPowerMode
         let current = Set(m.items.map(\.id))
         notified = notified.filter { current.contains($0.key) }

@@ -3,8 +3,14 @@ import SwiftUI
 let menuWidth: CGFloat = 400
 
 /// The dropdown under the menu-bar icon.
+final class UIState: ObservableObject {
+    static let shared = UIState()
+    @Published var showSettings = false
+}
+
 struct MenuView: View {
     @EnvironmentObject var m: Monitor
+    @ObservedObject var ui = UIState.shared
 
     private var sections: [(ItemKind, [Item])] {
         let order: [ItemKind] = [.leftover, .sleepHold, .simulator, .sessionJob, .appStarted, .claudeApp]
@@ -20,6 +26,19 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             Divider().padding(.horizontal, 12)
+            if ui.showSettings {
+                SettingsView()
+            } else {
+                list
+            }
+            Divider().padding(.horizontal, 12)
+            footer
+        }
+        .frame(width: menuWidth)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var list: some View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     if !sections.contains(where: { $0.0 != .claudeApp }) {
@@ -41,16 +60,11 @@ struct MenuView: View {
                 .padding(12)
             }
             .frame(maxHeight: 460)
-            Divider().padding(.horizontal, 12)
-            footer
-        }
-        .frame(width: menuWidth)
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text("Leftovers").font(.headline)
+            Text(ui.showSettings ? "Leftovers Settings" : "Leftovers").font(.headline)
             Spacer()
             Text(batteryLine).font(.caption).foregroundStyle(.secondary)
         }
@@ -66,11 +80,31 @@ struct MenuView: View {
     }
 
     private var ownCost: String {
+        if m.ownWatts < 0 { return "measuring…" }
         let pct = m.battery.capacityWh > 0 ? m.ownWatts / m.battery.capacityWh * 100 : 0
-        return pct < 0.1 ? "<0.1%/h" : String(format: "%.1f%%/h", pct)
+        return pct < 0.1 ? "<0.1% battery/h" : String(format: "%.1f%% battery/h", pct)
     }
 
     private var footer: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            let freed = m.freedThisWeek
+            if freed.count > 0, !ui.showSettings {
+                Label(freedText(freed), systemImage: "leaf.arrow.triangle.circlepath")
+                    .font(.caption)
+                    .foregroundStyle(.green)
+            }
+            footerButtons
+        }
+        .padding(.horizontal, 14).padding(.vertical, 9)
+    }
+
+    private func freedText(_ f: (count: Int, perHour: Double)) -> String {
+        let what = f.count == 1 ? "1 thing" : "\(f.count) things"
+        let cost = f.perHour >= 1 ? String(format: " that used ~%.0f%% of your battery an hour", f.perHour) : ""
+        return "This week you stopped \(what)\(cost)."
+    }
+
+    private var footerButtons: some View {
         HStack(spacing: 12) {
             if let t = m.scannedAt {
                 TimelineView(.periodic(from: .now, by: 15)) { ctx in
@@ -80,13 +114,17 @@ struct MenuView: View {
             }
             Text("· Leftovers itself: " + ownCost).help(String(format: "%.3f W", m.ownWatts))
             Spacer()
-            Button("Check now") { m.scan() }
+            if ui.showSettings {
+                Button("Done") { ui.showSettings = false }
+            } else {
+                Button("Check now") { m.scan() }
+                Button { ui.showSettings = true } label: { Image(systemName: "gearshape") }.help("Settings")
+            }
             Button("Quit") { NSApp.terminate(nil) }
         }
         .buttonStyle(.borderless)
         .font(.caption)
         .foregroundStyle(.secondary)
-        .padding(.horizontal, 14).padding(.vertical, 9)
     }
 }
 
@@ -152,12 +190,19 @@ struct ItemRow: View {
                 .disabled(stopping)
             }
             if expanded {
-                Text(item.command)
-                    .font(.system(size: 10, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(4)
-                    .textSelection(.enabled)
-                    .padding(.leading, 26)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.command)
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(4)
+                        .textSelection(.enabled)
+                    if item.folder != nil, item.kind != .simulator {
+                        Button("Show folder") { m.showFolder(item) }
+                            .buttonStyle(.borderless)
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                }
+                .padding(.leading, 26)
             }
         }
         .padding(.vertical, 6).padding(.horizontal, 6)
@@ -189,8 +234,11 @@ struct ItemRow: View {
                 a.append(("Keep", { m.keep(item) }))
             }
             if item.verdict.level >= .warn { a.append(("Snooze 1 h", { m.snooze(item) })) }
+            if !item.ports.isEmpty { a.insert(("Open", { m.openInBrowser(item) }), at: 0) }
         case .sleepHold:
             if item.verdict.level >= .info { a.append(("Open Claude", { m.openClaude() })) }
+        case .sessionJob:
+            if !item.ports.isEmpty { a.append(("Open", { m.openInBrowser(item) })) }
         default: break
         }
         return a

@@ -21,7 +21,12 @@ struct Classifier {
 
     init(home: String = NSHomeDirectory(), watchedFolders: [String]? = nil) {
         self.home = home
-        self.watchedFolders = watchedFolders ?? [home + "/Desktop/claude"]
+        self.watchedFolders = watchedFolders ?? Self.savedFolders(home: home)
+    }
+
+    /// Folders chosen in Settings (default: ~/Desktop/claude, where Claude builds your projects).
+    static func savedFolders(home: String = NSHomeDirectory()) -> [String] {
+        (UserDefaults.standard.array(forKey: "watchedFolders") as? [String]) ?? [home + "/Desktop/claude"]
     }
 
     static let claudeAppBundle = "/Applications/Claude.app/"

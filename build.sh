@@ -14,6 +14,7 @@ BIN=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/Leftove
 rm -rf $APP
 mkdir -p $APP/Contents/MacOS $APP/Contents/Resources
 cp $BIN $APP/Contents/MacOS/Leftovers
+cp assets/AppIcon.icns $APP/Contents/Resources/
 
 cat > $APP/Contents/Info.plist <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -24,9 +25,10 @@ cat > $APP/Contents/Info.plist <<PLIST
   <key>CFBundleIdentifier</key><string>com.danielryan.Leftovers</string>
   <key>CFBundleExecutable</key><string>Leftovers</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1</string>
+  <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>CFBundleVersion</key><string>1</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSUIElement</key><true/>
   <key>NSHumanReadableCopyright</key><string>Free and offline.</string>
 </dict></plist>
