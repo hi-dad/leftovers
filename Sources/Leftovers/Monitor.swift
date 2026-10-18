@@ -2,13 +2,29 @@ import Combine
 import Foundation
 
 /// Scans on a background queue and publishes the menu's rows.
-final class Monitor: ObservableObject {
+final class Monitor: NSObject, ObservableObject {
     static let shared = Monitor()
 
     @Published private(set) var items: [Item] = []
     @Published private(set) var battery = SystemInfo.battery()
     @Published private(set) var scannedAt: Date?
     @Published private(set) var ownWatts: Double = 0
+    /// Called on the main thread after each scan, with whether the Mac was on battery before it.
+    var onScanned: ((Bool) -> Void)?
+
+    // Memory between scans (see Rules).
+    var tracks: [String: Track] = [:]
+    var lastSimulatorUse: Date?
+    var lastClaudeWorking = SessionIndex.load().sessions.values.map(\.lastActivityAt).max() ?? Date()
+    @Published var kept: [String: String] {   // keepKey → label shown in Settings
+        didSet { UserDefaults.standard.set(kept, forKey: "kept") }
+    }
+    var snoozedUntil: [String: Date] = [:]
+
+    override init() {
+        kept = (UserDefaults.standard.dictionary(forKey: "kept") as? [String: String]) ?? [:]
+        super.init()
+    }
 
     private let queue = DispatchQueue(label: "leftovers.scan", qos: .utility)
     private var previous: [pid_t: Sample] = [:]
@@ -45,10 +61,12 @@ final class Monitor: ObservableObject {
         scanning = true
         queue.async { [weak self] in
             guard let self else { return }
-            let (items, battery, own) = self.compute(now: Date())
+            let (raw, battery, own, facts) = self.compute(now: Date())
             DispatchQueue.main.async {
-                self.items = items
+                let wasOnBattery = self.battery.onBattery
                 self.battery = battery
+                self.judge(raw, facts: facts, now: Date())
+                self.onScanned?(wasOnBattery)
                 self.ownWatts = own
                 self.scannedAt = Date()
                 self.scanning = false
@@ -62,17 +80,52 @@ final class Monitor: ObservableObject {
     func printOnce() {
         _ = compute(now: Date())
         Thread.sleep(forTimeInterval: 3)
-        let (items, battery, _) = compute(now: Date())
-        self.items = items; self.battery = battery; self.scannedAt = Date()
+        let (raw, battery, _, facts) = compute(now: Date())
+        self.battery = battery; self.scannedAt = Date()
+        judge(raw, facts: facts, now: Date())
         let enc = JSONEncoder()
         enc.outputFormatting = [.prettyPrinted, .sortedKeys]
         enc.dateEncodingStrategy = .iso8601
         print(String(decoding: try! enc.encode(Status(scannedAt: Date(), battery: battery, items: items)), as: UTF8.self))
     }
 
+    /// Applies the alarm rules to a fresh scan and publishes it (main thread).
+    func judge(_ raw: [Item], facts: Facts, now: Date) {
+        if facts.claudeWorking { lastClaudeWorking = now }
+        if facts.simPanelActive { lastSimulatorUse = now }
+        let ctx = RuleContext(now: now, onBattery: battery.onBattery, lastSimulatorUse: lastSimulatorUse,
+                              lastClaudeWorking: lastClaudeWorking, kept: Set(kept.keys), snoozedUntil: snoozedUntil,
+                              speedup: max(1, UserDefaults.standard.double(forKey: "ruleSpeedup")))
+        var newTracks: [String: Track] = [:]
+        items = raw.map { item in
+            var i = item
+            let t = Rules.updateTrack(tracks[i.id], item: i, now: now)
+            newTracks[i.id] = t
+            i.verdict = Rules.judge(i, track: t, ctx: ctx)
+            return i
+        }
+        tracks = newTracks
+        snoozedUntil = snoozedUntil.filter { $0.value > now }
+    }
+
+    /// For testing from Terminal: `Leftovers --stop <text>` stops the first leftover whose title contains it.
+    func stopOnce(matching text: String) {
+        _ = compute(now: Date()); Thread.sleep(forTimeInterval: 2)
+        let (raw, _, _, facts) = compute(now: Date())
+        judge(raw, facts: facts, now: Date())
+        guard let i = items.first(where: { $0.kind == .leftover && $0.title.contains(text) }) else { print("no match"); return }
+        print("stopping", i.title, i.pids)
+        stop(i)
+        RunLoop.main.run(until: Date().addingTimeInterval(7))
+        print("still alive:", zip(i.pids, i.startTimes).filter { ProcScan.startTime($0.0) == $0.1 }.map(\.0))
+    }
+
     // MARK: building the rows (background queue)
 
-    private func compute(now: Date) -> ([Item], BatteryState, Double) {
+    struct Facts { var claudeWorking = false, simPanelActive = false }
+
+    private func compute(now: Date) -> ([Item], BatteryState, Double, Facts) {
+        var facts = Facts()
         let battery = SystemInfo.battery()
         let procs = ProcScan.allProcesses()
         let sessions = SessionIndex.load()
@@ -81,27 +134,27 @@ final class Monitor: ObservableObject {
 
         var samples: [pid_t: Sample] = [:]
         /// Current CPU % and watts of one process (lifetime average the first time it is seen).
-        func rate(_ p: ProcRecord) -> (cpu: Double, watts: Double) {
-            guard let u = ProcScan.usage(p.pid) else { return (0, 0) }
+        func rate(_ p: ProcRecord) -> (cpu: Double, watts: Double, average: Double) {
+            guard let u = ProcScan.usage(p.pid) else { return (0, 0, 0) }
             let s = Sample(at: now, start: p.start, cpu: u.cpu, joules: u.joules)
             samples[p.pid] = s
+            let age = max(now.timeIntervalSince(p.start), 1)
             if let old = previous[p.pid], old.start == p.start, now.timeIntervalSince(old.at) > 1 {
                 let dt = now.timeIntervalSince(old.at)
-                return (max(0, (u.cpu - old.cpu) / dt * 100), max(0, (u.joules - old.joules) / dt))
+                return (max(0, (u.cpu - old.cpu) / dt * 100), max(0, (u.joules - old.joules) / dt), u.cpu / age * 100)
             }
-            let age = max(now.timeIntervalSince(p.start), 1)
-            return (u.cpu / age * 100, u.joules / age)
+            return (u.cpu / age * 100, u.joules / age, u.cpu / age * 100)
         }
         func perHour(_ watts: Double) -> Double? {
             battery.capacityWh > 0 ? watts / battery.capacityWh * 100 : nil
         }
 
-        struct FamilyStats { var cpu = 0.0, watts = 0.0, writes: [WrittenFile] = [], ports: [UInt16] = [], connections = 0, heaviest: ProcRecord? }
+        struct FamilyStats { var cpu = 0.0, watts = 0.0, average = 0.0, writes: [WrittenFile] = [], ports: [UInt16] = [], connections = 0, heaviest: ProcRecord? }
         func stats(_ fam: [ProcRecord]) -> FamilyStats {
             var st = FamilyStats(), top = -1.0
             for p in fam {
                 let r = rate(p)
-                st.cpu += r.cpu; st.watts += r.watts
+                st.cpu += r.cpu; st.watts += r.watts; st.average += r.average
                 if r.cpu > top { top = r.cpu; st.heaviest = p }
                 let f = ProcScan.openFiles(p.pid)
                 st.writes += f.writes
@@ -126,7 +179,9 @@ final class Monitor: ObservableObject {
                             project: classifier.project(for: root.cwd), pids: fam.map(\.pid), started: root.start,
                             cpuPercent: st.cpu, watts: st.watts, batteryPerHour: perHour(st.watts),
                             ports: st.ports, connections: st.connections,
-                            lastOutput: st.writes.map(\.modified).max())
+                            lastOutput: st.writes.map(\.modified).max(), averageCpu: st.average,
+                            startTimes: fam.map { $0.start.timeIntervalSince1970 },
+                            keepKey: "\(classifier.project(for: root.cwd) ?? root.cwd)|\(Describe.title(for: main))")
             let age = Describe.duration(now.timeIntervalSince(root.start))
             switch kind {
             case .leftover:
@@ -168,7 +223,8 @@ final class Monitor: ObservableObject {
                                   + " · booted \(Describe.duration(now.timeIntervalSince(started))) ago",
                               command: "xcrun simctl shutdown \(sim.udid)",
                               pids: fam.map(\.pid), started: started, cpuPercent: st.cpu, watts: st.watts,
-                              batteryPerHour: perHour(st.watts)))
+                              batteryPerHour: perHour(st.watts), averageCpu: st.average,
+                              keepKey: "sim-\(sim.udid)-\(Int(started.timeIntervalSince1970))"))
         }
 
         // Sleep holds taken by Claude or by anything Claude started.
@@ -182,19 +238,30 @@ final class Monitor: ObservableObject {
             items.append(Item(id: "sleep-\(pid)", kind: .sleepHold, title: "\(who) is \(what)",
                               detail: "For \(Describe.duration(now.timeIntervalSince(since)))",
                               command: list.map { "\($0.type): \($0.name)" }.joined(separator: "; "),
-                              pids: [pid], started: since))
+                              pids: [pid], started: since, keepKey: "sleep-\(who)"))
         }
 
         // The Claude app's own cost, for comparison.
         let appProcs = g.claudeApp + g.sessions
         if !appProcs.isEmpty {
             var watts = 0.0, cpu = 0.0
-            for p in appProcs { let r = rate(p); watts += r.watts; cpu += r.cpu }
+            let sessionPids = Set(g.sessions.map(\.pid))
+            for p in appProcs {
+                let r = rate(p); watts += r.watts; cpu += r.cpu
+                // Claude's simulator panel streams frames while it is showing a simulator.
+                if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
+                // A session is working when its Claude Code process is busy...
+                if sessionPids.contains(p.pid), r.cpu >= 1 { facts.claudeWorking = true }
+            }
+            // ...or it was active in the last 10 minutes.
+            if sessions.sessions.values.contains(where: { now.timeIntervalSince($0.lastActivityAt) < 600 }) {
+                facts.claudeWorking = true
+            }
             items.append(Item(id: "claude-app", kind: .claudeApp, title: "Claude",
                               detail: "\(g.claudeApp.count) app processes · \(g.sessions.count) Claude Code session\(g.sessions.count == 1 ? "" : "s") active",
                               command: Classifier.claudeAppMain, pids: appProcs.map(\.pid),
                               started: appProcs.map(\.start).min() ?? now,
-                              cpuPercent: cpu, watts: watts, batteryPerHour: perHour(watts)))
+                              cpuPercent: cpu, watts: watts, batteryPerHour: perHour(watts), keepKey: "claude"))
         }
 
         // Leftovers' own cost, shown in the footer so it is easy to see it stays light.
@@ -208,7 +275,7 @@ final class Monitor: ObservableObject {
         }
 
         previous = samples
-        return (items, battery, own)
+        return (items, battery, own, facts)
     }
 
     private func writeStatus() {

@@ -67,6 +67,10 @@ struct Item: Identifiable, Codable, Equatable {
     var ports: [UInt16] = []
     var connections = 0
     var lastOutput: Date?         // newest change to a file it is writing
+    var averageCpu: Double = 0    // CPU % averaged over each process's whole life
+    var startTimes: [Double] = [] // start time of each pid, so Stop never hits a reused pid
+    var keepKey = ""              // what "Keep" remembers (project + command, or device + boot)
+    var verdict = Verdict(level: .none, tag: "")
 }
 
 struct BatteryState: Codable, Equatable {

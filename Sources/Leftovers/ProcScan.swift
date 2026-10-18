@@ -37,6 +37,14 @@ enum ProcScan {
         return out
     }
 
+    /// When a process started, or nil if it is gone (used to make sure a pid wasn't reused).
+    static func startTime(_ pid: pid_t) -> Double? {
+        var info = proc_bsdinfo()
+        let size = Int32(MemoryLayout<proc_bsdinfo>.size)
+        guard proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, &info, size) == size else { return nil }
+        return Double(info.pbi_start_tvsec)
+    }
+
     /// Total CPU seconds and energy (joules) the process has used since it started.
     static func usage(_ pid: pid_t) -> (cpu: Double, joules: Double)? {
         var ru = rusage_info_v6()

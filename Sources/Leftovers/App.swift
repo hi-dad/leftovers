@@ -6,6 +6,9 @@ import SwiftUI
 enum LeftoversMain {
     static func main() {
         if CommandLine.arguments.contains("--once") { Monitor.shared.printOnce(); return }
+        if let i = CommandLine.arguments.firstIndex(of: "--stop"), i + 1 < CommandLine.arguments.count {
+            Monitor.shared.stopOnce(matching: CommandLine.arguments[i + 1]); return
+        }
         let app = NSApplication.shared
         let delegate = AppDelegate()
         app.delegate = delegate
@@ -37,6 +40,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         item.button?.target = self
         item.button?.action = #selector(toggleDrop)
         m.$items.sink { [weak self] items in self?.updateIcon(items) }.store(in: &watchers)
+        Notifier.shared.onReview = { [weak self] in
+            if self?.drop?.isVisible != true { self?.openDrop() }
+        }
+        Notifier.shared.start()
+        // Using the Simulator app counts as using the simulators.
+        let ws = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.didDeactivateApplicationNotification] {
+            ws.addObserver(forName: name, object: nil, queue: .main) { n in
+                let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                if app?.bundleIdentifier == "com.apple.iphonesimulator" { Monitor.shared.lastSimulatorUse = Date() }
+            }
+        }
+        if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.iphonesimulator" {
+            m.lastSimulatorUse = Date()
+        }
         m.start()
         // For screenshots in testing: `open Leftovers.app --args -openOnLaunch YES`.
         if UserDefaults.standard.bool(forKey: "openOnLaunch") {
@@ -44,13 +62,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    /// Plain leaf when all is well; a count beside it (orange, or red if something looks stuck) when not.
     func updateIcon(_ items: [Item]) {
-        let leftovers = items.filter { $0.kind == .leftover }.count
-        let img = NSImage(systemSymbolName: leftovers > 0 ? "leaf.fill" : "leaf", accessibilityDescription: "Leftovers")
+        let flagged = items.filter { $0.verdict.level >= .warn }
+        let worst = flagged.map(\.verdict.level).max() ?? .none
+        let img = NSImage(systemSymbolName: flagged.isEmpty ? "leaf" : "leaf.fill", accessibilityDescription: "Leftovers")
         img?.isTemplate = true
         item.button?.image = img
-        item.button?.title = leftovers > 0 ? " \(leftovers)" : ""
         item.button?.imagePosition = .imageLeading
+        if flagged.isEmpty {
+            item.button?.attributedTitle = NSAttributedString(string: "")
+        } else {
+            let color: NSColor = worst == .alarm ? .systemRed : .systemOrange
+            item.button?.attributedTitle = NSAttributedString(string: " \(flagged.count)", attributes: [
+                .foregroundColor: color, .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)])
+        }
     }
 
     @objc func toggleDrop() {

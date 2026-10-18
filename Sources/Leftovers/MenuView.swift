@@ -9,7 +9,9 @@ struct MenuView: View {
     private var sections: [(ItemKind, [Item])] {
         let order: [ItemKind] = [.leftover, .sleepHold, .simulator, .sessionJob, .appStarted, .claudeApp]
         return order.compactMap { kind in
-            let list = m.items.filter { $0.kind == kind }.sorted { $0.watts > $1.watts }
+            let list = m.items.filter { $0.kind == kind }.sorted {
+                ($0.verdict.level, $0.watts) > ($1.verdict.level, $1.watts)
+            }
             return list.isEmpty ? nil : (kind, list)
         }
     }
@@ -90,7 +92,9 @@ struct MenuView: View {
 
 struct ItemRow: View {
     let item: Item
+    @EnvironmentObject var m: Monitor
     @State private var expanded = false
+    @State private var stopping = false
 
     var icon: String {
         switch item.kind {
@@ -108,9 +112,19 @@ struct ItemRow: View {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: icon)
                     .frame(width: 18)
-                    .foregroundStyle(item.kind == .leftover ? Color.orange : Color.secondary)
+                    .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                    HStack(spacing: 6) {
+                        Text(item.title).font(.system(size: 13, weight: .medium)).lineLimit(1)
+                        if !item.verdict.tag.isEmpty {
+                            Text(item.verdict.tag)
+                                .font(.system(size: 10, weight: .semibold))
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(Capsule().fill(levelColor.opacity(0.18)))
+                                .foregroundStyle(levelColor)
+                                .fixedSize()
+                        }
+                    }
                     Text(item.detail).font(.caption).foregroundStyle(.secondary).lineLimit(2)
                     if let extra = extraLine {
                         Text(extra).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -126,6 +140,17 @@ struct ItemRow: View {
                         .help(String(format: "%.1f W · %.0f%% CPU", item.watts, item.cpuPercent))
                 }
             }
+            if !actions.isEmpty {
+                HStack(spacing: 14) {
+                    ForEach(actions, id: \.0) { label, action in
+                        Button(label, action: action)
+                    }
+                }
+                .buttonStyle(.borderless)
+                .font(.system(size: 11, weight: .medium))
+                .padding(.leading, 26)
+                .disabled(stopping)
+            }
             if expanded {
                 Text(item.command)
                     .font(.system(size: 10, design: .monospaced))
@@ -139,6 +164,36 @@ struct ItemRow: View {
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
         .contentShape(Rectangle())
         .onTapGesture { expanded.toggle() }
+    }
+
+    private var levelColor: Color {
+        switch item.verdict.level {
+        case .alarm: .red
+        case .warn: .orange
+        default: .secondary
+        }
+    }
+
+    private var actions: [(String, () -> Void)] {
+        if stopping { return [(item.kind == .simulator ? "Shutting down…" : "Stopping…", {})] }
+        var a: [(String, () -> Void)] = []
+        let stop = { stopping = true; m.stop(item) }
+        switch item.kind {
+        case .leftover, .appStarted, .simulator:
+            if item.kind != .appStarted || item.verdict.level >= .info {
+                a.append((item.kind == .simulator ? "Shut down" : "Stop", stop))
+            }
+            if m.kept[item.keepKey] != nil {
+                a.append(("Stop keeping", { m.unkeep(item.keepKey) }))
+            } else if item.verdict.level >= .info {
+                a.append(("Keep", { m.keep(item) }))
+            }
+            if item.verdict.level >= .warn { a.append(("Snooze 1 h", { m.snooze(item) })) }
+        case .sleepHold:
+            if item.verdict.level >= .info { a.append(("Open Claude", { m.openClaude() })) }
+        default: break
+        }
+        return a
     }
 
     private var extraLine: String? {
