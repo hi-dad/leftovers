@@ -42,6 +42,7 @@ else
 fi
 
 pkill -x Leftovers || true
+while pgrep -x Leftovers >/dev/null; do sleep 0.2; done   # let it quit before relaunching
 rm -rf /Applications/$APP
 mv $APP /Applications/
 open /Applications/$APP
