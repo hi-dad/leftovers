@@ -255,7 +255,7 @@ enum Describe {
             return ("What to do", "In Claude: Settings → Claude Code → turn off “Keep awake on battery”. Claude still keeps the Mac awake while plugged in.")
         case .chatHelper:
             let mem = i.memoryMB.map { $0 >= 1 ? String(format: "Frees about %.0f MB. ", $0) : "" } ?? ""
-            return ("If you close it", mem + "The chat isn't deleted; Claude starts a new helper when you go back to it."
+            return ("If you close it", mem + "The chat isn't deleted and still opens normally; Claude loads a new helper when it needs one."
                     + (i.verdict.tag == "Stuck" ? " Anything that chat was still running also stops." : ""))
         case .helperPileup:
             return ("What to do", "Quit Claude (⌘Q) and reopen it. That closes all the old helpers; your chats are kept.")
