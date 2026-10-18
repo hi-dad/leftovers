@@ -1,6 +1,6 @@
 import SwiftUI
 
-let menuWidth: CGFloat = 400
+let menuWidth: CGFloat = 470
 
 /// The dropdown under the menu-bar icon.
 final class UIState: ObservableObject {
@@ -54,12 +54,12 @@ struct MenuView: View {
             }
             .padding(12)
         }
-        .frame(maxHeight: ui.tallForPicture ? 1200 : 460)
+        .frame(maxHeight: ui.tallForPicture ? 1400 : min(640, (NSScreen.main?.visibleFrame.height ?? 900) - 160))
     }
 
     private var header: some View {
         Text(ui.showSettings ? "Leftovers Settings" : "Leftovers")
-            .font(.headline)
+            .font(.system(size: 17, weight: .semibold))
             .padding(.horizontal, 14).padding(.vertical, 10)
     }
 
@@ -68,7 +68,7 @@ struct MenuView: View {
             let freed = m.freedThisWeek
             if freed.count > 0, !ui.showSettings {
                 Label(freedText(freed), systemImage: "leaf.arrow.triangle.circlepath")
-                    .font(.caption)
+                    .font(.system(size: 13))
                     .foregroundStyle(.green)
             }
             footerButtons
@@ -100,7 +100,7 @@ struct MenuView: View {
             Button("Quit") { NSApp.terminate(nil) }
         }
         .buttonStyle(.borderless)
-        .font(.caption)
+        .font(.system(size: 13))
         .foregroundStyle(.secondary)
     }
 }
@@ -115,12 +115,12 @@ struct StatusBanner: View {
         let color: Color = ok ? .green : attention.contains { $0.verdict.level == .alarm } ? .red : .orange
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
-                .font(.system(size: 20))
+                .font(.system(size: 24))
                 .foregroundStyle(color)
             VStack(alignment: .leading, spacing: 2) {
                 Text(ok ? "All clear" : attention.count == 1 ? "1 thing needs a look" : "\(attention.count) things need a look")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                    .font(.system(size: 16, weight: .semibold))
+                Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
@@ -168,21 +168,22 @@ struct ItemRow: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: icon)
-                    .frame(width: 18)
+                    .font(.system(size: 16))
+                    .frame(width: 22)
                     .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Describe.summary(item))
-                        .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(2)
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
                     Text(Describe.reason(item))
-                        .font(.caption)
+                        .font(.system(size: 13))
                         .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
                 }
                 Spacer(minLength: 4)
                 if let cost = costText {
                     Text(cost)
-                        .font(.system(size: 11, weight: .semibold).monospacedDigit())
+                        .font(.system(size: 13, weight: .semibold).monospacedDigit())
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(Capsule().fill(costColor.opacity(0.18)))
                         .foregroundStyle(costColor)
@@ -191,10 +192,10 @@ struct ItemRow: View {
             }
             if let advice = Describe.advice(item), !actions.isEmpty {
                 (Text(advice.label + ": ").fontWeight(.semibold) + Text(advice.text))
-                    .font(.caption)
+                    .font(.system(size: 13))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .padding(.leading, 26)
+                    .padding(.leading, 30)
             }
             HStack(spacing: 14) {
                 ForEach(actions, id: \.0) { label, action in
@@ -206,19 +207,19 @@ struct ItemRow: View {
                 } label: {
                     HStack(spacing: 3) {
                         Text("Details")
-                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 9, weight: .semibold))
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundStyle(.secondary)
                 }
             }
             .buttonStyle(.borderless)
-            .font(.system(size: 11, weight: .medium))
-            .padding(.leading, 26)
+            .font(.system(size: 14, weight: .medium))
+            .padding(.leading, 30)
             .disabled(stopping)
-            if expanded { details.padding(.leading, 26) }
+            if expanded { details.padding(.leading, 30) }
         }
-        .padding(.vertical, 8).padding(.horizontal, 8)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
+        .padding(.vertical, 10).padding(.horizontal, 10)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.05)))
     }
 
     /// The technical facts, for when you want to know exactly what it is.
@@ -275,13 +276,13 @@ struct ItemRow: View {
         return VStack(alignment: .leading, spacing: 3) {
             ForEach(rows, id: \.0) { k, v in
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(k).foregroundStyle(.secondary).frame(width: 96, alignment: .leading)
+                    Text(k).foregroundStyle(.secondary).frame(width: 120, alignment: .leading)
                     Text(v).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 }
             }
             if [.leftover, .appStarted, .sessionJob].contains(item.kind) {
                 Text(item.command)
-                    .font(.system(size: 10, design: .monospaced))
+                    .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(.secondary)
                     .lineLimit(4)
                     .textSelection(.enabled)
@@ -291,7 +292,7 @@ struct ItemRow: View {
                 }
             }
         }
-        .font(.system(size: 11))
+        .font(.system(size: 13))
     }
 
     private var levelColor: Color {
