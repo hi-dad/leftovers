@@ -45,5 +45,6 @@ pkill -x Leftovers || true
 while pgrep -x Leftovers >/dev/null; do sleep 0.2; done   # let it quit before relaunching
 rm -rf /Applications/$APP
 mv $APP /Applications/
-open /Applications/$APP
+# macOS can take a moment to register the new copy; retry the launch a few times.
+for i in 1 2 3 4 5; do open /Applications/$APP 2>/dev/null && break; sleep 1; done
 echo "Installed to /Applications"
