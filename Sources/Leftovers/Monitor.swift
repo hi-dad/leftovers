@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import Foundation
 
@@ -105,6 +106,7 @@ final class Monitor: NSObject, ObservableObject {
             let t = Rules.updateTrack(tracks[i.id], item: i, now: now)
             newTracks[i.id] = t
             i.verdict = Rules.judge(i, track: t, ctx: ctx)
+            i.status = Rules.status(i, track: t, ctx: ctx)
             return i
         }
         tracks = newTracks
@@ -249,9 +251,13 @@ final class Monitor: NSObject, ObservableObject {
         // The Claude app's own processes tell whether a session is working and whether Claude's simulator
         // panel is showing (used by the rules; not shown as a row).
         var renderCPU = 0.0, renderWatts = 0.0
+        var renderers: [(pid: pid_t, cpu: Double, mb: Double)] = []
         for p in g.claudeApp {
             let r = rate(p)
-            if p.name.contains("Renderer") { renderCPU += r.cpu; renderWatts += r.watts }
+            if p.name.contains("Renderer") {
+                renderCPU += r.cpu; renderWatts += r.watts
+                renderers.append((p.pid, r.cpu, ProcScan.usage(p.pid)?.memoryMB ?? 0))
+            }
             // Claude's simulator panel streams frames while it is showing a simulator.
             if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
         }
@@ -293,10 +299,25 @@ final class Monitor: NSObject, ObservableObject {
 
         // #7 The Claude app's windows drawing hard (usually an animated preview or artifact left open).
         if renderCPU >= 10 {
+            // Electron doesn't label its window processes, but the biggest one is the main window,
+            // so the busiest one can be told apart as "main window" or "a side panel or preview".
+            let main = renderers.max { $0.mb < $1.mb }?.pid
+            let busiest = renderers.max { $0.cpu < $1.cpu }
+            var notes: [String] = []
+            if let b = busiest {
+                notes.append("Busiest part: " + (b.pid == main ? "the main Claude window" : "a side panel or preview")
+                             + String(format: " (%.0f%% CPU)", b.cpu))
+            }
+            let appPid = procs.first { $0.path == Classifier.claudeAppMain }?.pid
+            let windows = (CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? [])
+                .filter { ($0[kCGWindowOwnerPID as String] as? pid_t) == appPid && ($0[kCGWindowLayer as String] as? Int) == 0 }.count
+            notes.append("Claude windows on screen: \(windows)")
+            let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.anthropic.claudefordesktop"
+            notes.append("Claude in front: " + (front ? "yes" : "no (busy in the background)"))
             items.append(Item(id: "claude-preview", kind: .claudePreview, title: "Claude app windows",
-                              detail: "", command: "Claude Helper (Renderer)", pids: g.claudeApp.filter { $0.name.contains("Renderer") }.map(\.pid),
+                              detail: "", command: "Claude Helper (Renderer)", pids: renderers.map(\.pid),
                               started: now, cpuPercent: renderCPU, watts: renderWatts, batteryPerHour: perHour(renderWatts),
-                              keepKey: "claude-preview", noun: "Claude app"))
+                              keepKey: "claude-preview", noun: "Claude app", notes: notes))
         }
 
         // #8 / #9 Spotlight and cloud-sync apps chewing on Claude's build folders. System processes are

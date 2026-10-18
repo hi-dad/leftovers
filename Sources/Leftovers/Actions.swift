@@ -14,7 +14,7 @@ extension Monitor {
                 p.executableURL = URL(fileURLWithPath: "/usr/bin/xcrun")
                 p.arguments = ["simctl", "shutdown", udid]
                 try? p.run(); p.waitUntilExit()
-                DispatchQueue.main.async { self.logStop(i); self.scan() }
+                DispatchQueue.main.async { self.scan() }
             }
         case .leftover, .appStarted, .android, .chatHelper:
             let members = Array(zip(i.pids, i.startTimes))
@@ -28,7 +28,7 @@ extension Monitor {
                 for _ in 0..<10 where !alive().isEmpty { Thread.sleep(forTimeInterval: 0.5) }
                 for pid in alive() { kill(pid, SIGKILL) }
                 Thread.sleep(forTimeInterval: 0.3)
-                DispatchQueue.main.async { self.logStop(i); self.scan() }
+                DispatchQueue.main.async { self.scan() }
             }
         default:
             break
@@ -50,11 +50,6 @@ extension Monitor {
             Extras.closeChromeTabs(url: i.command)
             DispatchQueue.main.async { self.scan() }
         }
-    }
-
-    /// Asks the Claude app to quit normally (same as ⌘Q), which closes all its chat helpers.
-    func quitClaude() {
-        NSRunningApplication.runningApplications(withBundleIdentifier: "com.anthropic.claudefordesktop").forEach { $0.terminate() }
     }
 
     func openChromeExtensions() {
@@ -81,13 +76,6 @@ extension Monitor {
         NSWorkspace.shared.open(URL(fileURLWithPath: f, isDirectory: true))
     }
 
-    /// Battery use (% an hour) of the things you stopped in the last 7 days.
-    var freedThisWeek: (count: Int, perHour: Double) {
-        let week = stopLog.filter { $0.at > Date().addingTimeInterval(-7 * 86400) }
-        let cap = battery.capacityWh
-        return (week.count, cap > 0 ? week.map(\.watts).reduce(0, +) / cap * 100 : 0)
-    }
-
     func openClaude() {
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Claude.app"),
                                            configuration: NSWorkspace.OpenConfiguration())
@@ -99,25 +87,5 @@ extension Monitor {
         let tracksBefore = tracks
         judge(raw, facts: Facts(), now: Date())
         tracks = tracksBefore
-    }
-
-    // MARK: savings log (shown as "battery saved" in the menu)
-
-    struct StopRecord: Codable { var at: Date; var title: String; var watts: Double }
-
-    var stopLog: [StopRecord] {
-        get {
-            guard let d = UserDefaults.standard.data(forKey: "stopLog") else { return [] }
-            return (try? JSONDecoder().decode([StopRecord].self, from: d)) ?? []
-        }
-        set {
-            let recent = newValue.filter { $0.at > Date().addingTimeInterval(-90 * 86400) }
-            UserDefaults.standard.set(try? JSONEncoder().encode(recent), forKey: "stopLog")
-        }
-    }
-
-    private func logStop(_ i: Item) {
-        stopLog.append(StopRecord(at: Date(), title: i.title, watts: i.watts))
-        objectWillChange.send()
     }
 }

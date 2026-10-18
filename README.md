@@ -12,7 +12,13 @@ Claude Code often starts background work: builds, video encodes, dev servers, iP
 
 ## What it shows
 
-At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Below that, each row is one plain sentence, like *"Python script stuck in zom-zom"* or *"iPhone simulator running StoryboardAR"*, plus why it's listed. **Details** shows the technical facts: the program, the script that started it, the Claude chat, the folder, the command and the battery cost. Only things you can act on are listed:
+At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Problems come first, then two quieter lists: **Running · inactive** (nothing is using it; stop it before it wastes battery) and **Running · in use**.
+
+Every row reads the same way:
+- **Title:** what it is, in plain words, e.g. *"Python script stuck in zom-zom"* or *"iPhone simulator running StoryboardAR"*.
+- **Subheader:** how long it's been going and when it last did something, e.g. *"Running 2 days · last change 47 h ago"* or *"Busy 20 min · last message 3 h ago"*.
+- **One line on what stopping does:** *"Safe to stop: its Claude chat already finished"* or *"Stopping: closes the test website until it's restarted"*. When there's nothing to stop, it gives the fix instead.
+- **Details** for the technical facts: program, the script that started it, Claude chat, folder, command, battery cost.
 
 | Section | What it means | Buttons |
 |---|---|---|

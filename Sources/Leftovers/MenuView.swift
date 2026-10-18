@@ -6,7 +6,7 @@ let menuWidth: CGFloat = 470
 final class UIState: ObservableObject {
     static let shared = UIState()
     @Published var showSettings = false
-    var expandFirst = false   // README picture only
+    var expandID: String?   // pictures only: open this row's Details
     var tallForPicture = false   // README picture only: no scrolling
 }
 
@@ -49,8 +49,19 @@ struct MenuView: View {
     private var list: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                StatusBanner(attention: shown.filter { $0.verdict.level >= .warn }, others: shown.count)
-                ForEach(sorted) { ItemRow(item: $0, expanded: ui.expandFirst && $0.id == sorted.first?.id) }
+                StatusBanner(attention: shown.filter { $0.verdict.level >= .warn })
+                let problems = sorted.filter { $0.verdict.level >= .warn }
+                let inactive = sorted.filter { $0.verdict.level == .info }
+                let inUse = sorted.filter { $0.verdict.level == .none }
+                ForEach(problems) { ItemRow(item: $0, expanded: $0.id == ui.expandID) }
+                if !inactive.isEmpty {
+                    SectionTitle(text: "Running · inactive", note: "Not doing anything; stop them before they waste battery")
+                    ForEach(inactive) { ItemRow(item: $0) }
+                }
+                if !inUse.isEmpty {
+                    SectionTitle(text: "Running · in use", note: "Being used right now")
+                    ForEach(inUse) { ItemRow(item: $0) }
+                }
             }
             .padding(12)
         }
@@ -64,22 +75,8 @@ struct MenuView: View {
     }
 
     private var footer: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            let freed = m.freedThisWeek
-            if freed.count > 0, !ui.showSettings {
-                Label(freedText(freed), systemImage: "leaf.arrow.triangle.circlepath")
-                    .font(.system(size: 13))
-                    .foregroundStyle(.green)
-            }
-            footerButtons
-        }
+        footerButtons
         .padding(.horizontal, 14).padding(.vertical, 9)
-    }
-
-    private func freedText(_ f: (count: Int, perHour: Double)) -> String {
-        let what = f.count == 1 ? "1 thing" : "\(f.count) things"
-        let cost = f.perHour >= 1 ? String(format: " that used ~%.0f%% of your battery an hour", f.perHour) : ""
-        return "This week you stopped \(what)\(cost)."
     }
 
     private var footerButtons: some View {
@@ -108,7 +105,6 @@ struct MenuView: View {
 /// The answer to "is anything wasting my battery?", always at the top.
 struct StatusBanner: View {
     let attention: [Item]
-    let others: Int
 
     var body: some View {
         let ok = attention.isEmpty
@@ -130,9 +126,7 @@ struct StatusBanner: View {
     }
 
     private var subtitle: String {
-        if !attention.isEmpty { return "Something from Claude is wasting battery." }
-        return others == 0 ? "Nothing Claude started is still running."
-                           : "Nothing is wasting battery. Here's what's still running:"
+        attention.isEmpty ? "Nothing from Claude is wasting battery." : "Something from Claude is wasting battery."
     }
 }
 
@@ -176,7 +170,7 @@ struct ItemRow: View {
                         .font(.system(size: 15, weight: .semibold))
                         .lineLimit(3)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text(Describe.reason(item))
+                    Text(item.status)
                         .font(.system(size: 13))
                         .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
                 }
@@ -190,7 +184,7 @@ struct ItemRow: View {
                         .help("Share of your battery this uses per hour")
                 }
             }
-            if let advice = Describe.advice(item), !actions.isEmpty {
+            if let advice = Describe.advice(item) {
                 (Text(advice.label + ": ").fontWeight(.semibold) + Text(advice.text))
                     .font(.system(size: 13))
                     .foregroundStyle(.secondary)
@@ -238,7 +232,7 @@ struct ItemRow: View {
             rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
             for (n, f) in item.apps.enumerated() { rows.append((n == 0 ? "Build folders" : " ", f)) }
         case .claudePreview:
-            rows.append(("Claude windows", String(format: "%.0f%% CPU", item.cpuPercent)))
+            rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
         case .chatHelper:
             rows.append(("Chat", item.title))
             if let mb = item.memoryMB { rows.append(("Memory", String(format: "%.0f MB", mb))) }
@@ -255,9 +249,8 @@ struct ItemRow: View {
             if let p = item.project { rows.append(("Project", p)) }
             rows.append(("Chrome pages", String(format: "%.0f%% CPU in total", item.cpuPercent)))
         case .sleepHold:
-            rows.append(("What", item.title))
+            rows.append(("Held by", item.title.replacingOccurrences(of: " is stopping your Mac from sleeping", with: "").replacingOccurrences(of: " is keeping your screen on", with: "")))
             rows.append(("Since", Describe.duration(now.timeIntervalSince(item.started)) + " ago"))
-            rows.append(("Fix", "Claude → Settings → Claude Code → turn off “Keep awake on battery”"))
         default:
             rows.append(("Program", item.title))
             if let s = item.starter { rows.append(("Started by", s)) }
@@ -269,6 +262,10 @@ struct ItemRow: View {
                 rows.append(("Address", item.ports.map { "localhost:\($0)" }.joined(separator: ", ")))
                 rows.append(("Visitors now", item.connections == 0 ? "none" : "\(item.connections)"))
             }
+        }
+        for note in item.notes {
+            let parts = note.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
+            if parts.count == 2 { rows.append((parts[0], parts[1])) }
         }
         if let b = item.batteryPerHour, item.kind != .sleepHold {
             rows.append(("Battery", String(format: "~%.1f%% an hour (%.0f%% CPU)", b, item.cpuPercent)))
@@ -334,7 +331,7 @@ struct ItemRow: View {
         case .chatHelper:
             if !item.busy { a.append(("Close", stop)) }
         case .helperPileup:
-            a.append(("Quit Claude", { m.quitClaude() }))
+            break
         case .chromeExtension:
             a.append(("Open Chrome extensions", { m.openChromeExtensions() }))
         case .cloudSync:
@@ -357,3 +354,16 @@ struct ItemRow: View {
     }
 }
 
+
+struct SectionTitle: View {
+    let text: String
+    let note: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(text.uppercased()).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+            Text(note).font(.system(size: 12)).foregroundStyle(.tertiary)
+        }
+        .padding(.top, 6).padding(.horizontal, 4)
+    }
+}

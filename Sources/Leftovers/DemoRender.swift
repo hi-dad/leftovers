@@ -32,9 +32,26 @@ enum DemoRender {
                         verdict: Verdict(level: .info, tag: "Idle 2 h"), project: "pokemon-silverwind", ports: [5173])
         site.noun = "Test website"
         var demo = [stuck, loop, sim, site]
-        UIState.shared.expandFirst = false
-        if let scenario { (demo, UIState.shared.expandFirst) = examples(scenario, item: item, stuck: stuck, loop: loop, sim: sim, site: site) }
+        UIState.shared.expandID = nil
+        if let scenario {
+            let (rows, expand) = examples(scenario, item: item, stuck: stuck, loop: loop, sim: sim, site: site)
+            demo = rows
+            UIState.shared.expandID = expand ? (scenario == "claude" ? "Claude app windows" : rows.first?.id) : nil
+        }
         UIState.shared.tallForPicture = true
+        // Fill in the subheaders the way the live app does, from a made-up recent history.
+        let simUse: TimeInterval = scenario == "quiet" ? 5 * 60 : 30 * 3600
+        let ctx = RuleContext(now: now, onBattery: true, lastSimulatorUse: now.addingTimeInterval(-simUse),
+                              lastClaudeWorking: now.addingTimeInterval(-3 * 3600),
+                              lastAndroidUse: now.addingTimeInterval(-5 * 3600), lastChromeUse: now.addingTimeInterval(-2 * 3600),
+                              kept: [])
+        demo = demo.map { item in
+            var i = item
+            let track = Track(firstSeen: i.started, heavySince: i.started,
+                              lastConnection: i.ports.isEmpty || i.connections > 0 ? nil : now.addingTimeInterval(-2 * 3600))
+            i.status = Rules.status(i, track: track, ctx: ctx)
+            return i
+        }
         Monitor.shared.showDemo(demo)
         let view = MenuView().environmentObject(Monitor.shared)
             .background(Color(nsColor: NSColor(white: 0.17, alpha: 1)))
@@ -68,7 +85,8 @@ enum DemoRender {
             var live = make(.sessionJob, "Dev server (Vite) on port 5174", hours: 0.5, perHour: 0.3, .none, "",
                             project: "morse-waldo", ports: [5174], noun: "Test website")
             live.connections = 1
-            return ([site, live], false)
+            var simInUse = sim; simInUse.verdict = Verdict(level: .none, tag: ""); simInUse.started = now.addingTimeInterval(-3600)
+            return ([site, live, simInUse], false)
         case "leftovers":
             return ([stuck, loop, site], true)
         case "devices":
@@ -78,7 +96,7 @@ enum DemoRender {
             tab.command = "http://localhost:8000/"; tab.batteryPerHour = nil
             return ([sim, emu, tab], false)
         case "claude":
-            var chat = make(.chatHelper, "Project ideas", hours: 20, perHour: 6, .warn, "Stuck", noun: "Chat helper")
+            var chat = make(.chatHelper, "Project ideas", hours: 0.33, perHour: 6, .warn, "Stuck", noun: "Chat helper")
             chat.memoryMB = 240; chat.idleSince = now.addingTimeInterval(-3 * 3600)
             var pile = make(.helperPileup, "9 chat helpers", hours: 0, perHour: 0, .warn, "Pile-up", noun: "Chat helpers")
             pile.memoryMB = 1650; pile.batteryPerHour = nil
@@ -87,14 +105,16 @@ enum DemoRender {
             var hold = make(.sleepHold, "The Claude app is stopping your Mac from sleeping", hours: 55, perHour: 0,
                             .alarm, "No Claude work for 3 h")
             hold.batteryPerHour = nil
-            let preview = make(.claudePreview, "Claude app windows", hours: 1, perHour: 4, .warn, "Busy preview", noun: "Claude app")
-            return ([hold, chat, pile, preview], false)
+            var preview = make(.claudePreview, "Claude app windows", hours: 0.67, perHour: 4, .warn, "Busy preview", noun: "Claude app")
+            preview.cpuPercent = 42
+            preview.notes = ["Busiest part: a side panel or preview (38% CPU)", "Claude windows on screen: 2", "Claude in front: no (busy in the background)"]
+            return ([hold, chat, pile, preview], name == "claude")
         case "system":
-            var spot = make(.spotlight, "Spotlight indexing", hours: 0, perHour: 0, .warn, "Indexing", noun: "Spotlight")
+            var spot = make(.spotlight, "Spotlight indexing", hours: 0.33, perHour: 0, .warn, "Indexing", noun: "Spotlight")
             spot.apps = ["~/Desktop/claude/prayer-circle/node_modules", "~/Desktop/claude/snail-house/node_modules",
                          "~/Desktop/claude/leftovers/.build"]
             spot.batteryPerHour = nil
-            var sync = make(.cloudSync, "Cloud sync", hours: 0, perHour: 0, .warn, "Syncing", noun: "Cloud sync")
+            var sync = make(.cloudSync, "Cloud sync", hours: 0.5, perHour: 0, .warn, "Syncing", noun: "Cloud sync")
             sync.apps = ["~/Documents/apps/our-sims/node_modules"]; sync.batteryPerHour = nil
             let ext = make(.chromeExtension, "Chrome extension", hours: 2, perHour: 4, .warn, "Spinning", noun: "Chrome extension")
             return ([spot, sync, ext], false)

@@ -56,6 +56,51 @@ enum Rules {
         return t
     }
 
+    /// The subheader, in one style for every row: how long it has been going · when it last did something.
+    static func status(_ i: Item, track: Track, ctx: RuleContext) -> String {
+        let now = ctx.now
+        func dur(_ since: Date) -> String { Describe.duration(now.timeIntervalSince(since)) }
+        func ago(_ d: Date?) -> String? {
+            guard let d else { return nil }
+            let t = now.timeIntervalSince(d)
+            return t < 60 ? "just now" : Describe.duration(t) + " ago"
+        }
+        let busy = "Busy " + dur(track.heavySince ?? now)
+        var parts: [String]
+        switch i.kind {
+        case .leftover, .appStarted, .sessionJob:
+            parts = ["Running " + dur(i.started)]
+            if !i.ports.isEmpty {
+                parts.append(i.connections > 0 ? "\(i.connections) visitor\(i.connections == 1 ? "" : "s") now"
+                             : ago(track.lastConnection).map { "last visit " + $0 } ?? "no visits yet")
+            } else if let out = ago(i.lastOutput) {
+                parts.append("last change " + out)
+            } else if i.kind == .leftover {
+                parts.append("no saved changes")
+            }
+        case .simulator, .android:
+            let use = i.kind == .simulator ? ctx.lastSimulatorUse : ctx.lastAndroidUse
+            if let use, use > i.started, let a = ago(use) { parts = ["Running " + dur(i.started), "last used " + a] }
+            else { parts = ["Running " + dur(i.started), "not used yet"] }
+        case .browserTab:
+            parts = ["Open " + dur(track.firstSeen), ago(ctx.lastChromeUse).map { "Chrome last used " + $0 } ?? "Chrome not used since"]
+        case .sleepHold:
+            parts = ["Awake " + dur(i.started), "last Claude work " + (ago(ctx.lastClaudeWorking) ?? "a while ago")]
+        case .chatHelper:
+            parts = i.busy ? ["Working now"] : [busy, "last message " + (ago(i.idleSince) ?? "a while ago")]
+        case .helperPileup:
+            parts = ["\(i.apps.count) chats loaded", "limit is 6", String(format: "%.1f GB of memory", (i.memoryMB ?? 0) / 1024)]
+        case .claudePreview:
+            parts = [busy, "last Claude work " + (ago(ctx.lastClaudeWorking) ?? "a while ago")]
+        case .spotlight, .cloudSync:
+            parts = [busy, "\(i.apps.count) build folder\(i.apps.count == 1 ? "" : "s") changed"]
+        case .chromeExtension:
+            parts = [busy, ago(ctx.lastChromeUse).map { "Chrome last used " + $0 } ?? "Chrome not used since"]
+        }
+        if ctx.kept.contains(i.keepKey) { parts.append("kept") }
+        return parts.joined(separator: " · ")
+    }
+
     static func judge(_ i: Item, track: Track, ctx: RuleContext) -> Verdict {
         // Stricter on battery. (`defaults write com.danielryan.Leftovers ruleSpeedup 60` makes every wait
         // 60x shorter, for testing.)
@@ -73,7 +118,7 @@ enum Rules {
         switch i.kind {
         case .leftover:
             let by = i.session.map { " Left by “\($0)”." } ?? ""
-            if i.connections > 0 { return Verdict(level: .info, tag: "In use") }
+            if i.connections > 0 { return Verdict(level: .none, tag: "In use") }
             if isHeavy(i), heavyFor >= 30 * min * scale,
                let out = i.lastOutput, now.timeIntervalSince(out) >= 30 * min * scale {
                 return Verdict(level: .alarm, tag: "Looks stuck",
@@ -88,13 +133,11 @@ enum Rules {
             }
             return Verdict(level: .info, tag: "Left behind")
 
-        case .appStarted:
-            if let idle = idleServer, idle >= hour * scale {
+        case .appStarted, .sessionJob:
+            // A server nobody has visited for 10 minutes is inactive (listed, never a warning).
+            if let idle = idleServer, idle >= 10 * min * scale {
                 return Verdict(level: .info, tag: "Idle \(Describe.duration(idle))")
             }
-            return Verdict(level: .none, tag: "")
-
-        case .sessionJob:
             return Verdict(level: .none, tag: "")
 
         case .simulator:
@@ -103,7 +146,7 @@ enum Rules {
                 return Verdict(level: .warn, tag: "Unused \(Describe.duration(unused))",
                                message: "\(i.title) has been running for \(Describe.duration(now.timeIntervalSince(i.started))) and hasn't been used in \(Describe.duration(unused)).\(cost)")
             }
-            return Verdict(level: .none, tag: "")
+            return unused >= 30 * min * scale ? Verdict(level: .info, tag: "Inactive") : Verdict(level: .none, tag: "")
 
         case .android:
             let unused = now.timeIntervalSince(max(i.started, ctx.lastAndroidUse ?? .distantPast))
@@ -111,7 +154,7 @@ enum Rules {
                 return Verdict(level: .warn, tag: "Unused \(Describe.duration(unused))",
                                message: "\(i.title) has been running for \(Describe.duration(now.timeIntervalSince(i.started))) and hasn't been used in \(Describe.duration(unused)).\(cost)")
             }
-            return Verdict(level: .none, tag: "")
+            return unused >= 30 * min * scale ? Verdict(level: .info, tag: "Inactive") : Verdict(level: .none, tag: "")
 
         case .claudePreview:
             // Drawing while Claude works is normal (it's showing the reply). Busy with nothing happening is not.

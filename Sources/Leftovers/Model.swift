@@ -74,6 +74,8 @@ struct Item: Identifiable, Codable, Equatable {
     var memoryMB: Double?         // memory it holds
     var idleSince: Date?          // chat helpers: when the chat last stopped working
     var busy = false              // chat helpers: Claude is working in that chat right now
+    var status = ""               // the subheader: how long it has run · when it last did something
+    var notes: [String] = []      // extra "Label: value" lines for Details
 }
 
 struct BatteryState: Codable, Equatable {

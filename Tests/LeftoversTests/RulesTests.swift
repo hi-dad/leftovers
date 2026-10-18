@@ -78,7 +78,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         let v = Rules.judge(i, track: Track(firstSeen: now.addingTimeInterval(-2 * hour)), ctx: ctx())
         #expect(v.level == .info)
         #expect(v.tag == "Idle 2 h")
-        let recent = Track(firstSeen: now.addingTimeInterval(-2 * hour), lastConnection: now.addingTimeInterval(-10 * min))
+        let recent = Track(firstSeen: now.addingTimeInterval(-2 * hour), lastConnection: now.addingTimeInterval(-5 * min))
         #expect(Rules.judge(i, track: recent, ctx: ctx()).level == .none)
     }
 
@@ -89,7 +89,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         let v = Rules.judge(sim, track: t, ctx: ctx(simUsedAgo: 5 * hour))
         #expect(v.level == .warn)
         #expect(v.tag == "Unused 5 h")
-        #expect(Rules.judge(item(.simulator, startedAgo: 30 * min), track: t, ctx: ctx()).level == .none)
+        #expect(Rules.judge(item(.simulator, startedAgo: 20 * min), track: t, ctx: ctx()).level == .none)
     }
 
     @Test func claudeSleepHold() {
@@ -127,13 +127,11 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Describe.summary(sim) == "iPhone simulator running StoryboardAR")
     }
 
-    @Test func reasons() {
-        var i = leftover("Python script", tag: "Forgotten")
-        #expect(Describe.reason(i) == "Claude finished, but this kept going")
-        i.verdict.tag = "Unused 30 h"
-        #expect(Describe.reason(i) == "Not used in 30 h")
-        i.verdict.tag = "Idle 2 h"
-        #expect(Describe.reason(i) == "Nobody has opened it in 2 h")
+    @Test func advice() {
+        #expect(Describe.advice(leftover("Python script", tag: "Looks stuck"))! == ("Safe to stop", "it isn't making progress"))
+        #expect(Describe.advice(leftover("Python script", tag: "Forgotten"))! == ("Safe to stop", "its Claude chat already finished"))
+        #expect(Describe.advice(leftover("App build", tag: "Forgotten"))!.label == "Stopping")
+        #expect(Describe.advice(leftover("Test website", tag: "Left behind", ports: [8000]))!.text == "closes the test website until it's restarted")
     }
 }
 
@@ -188,7 +186,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
             #expect(Describe.advice(i) != nil, "\(kind)")
         }
         var site = item(.leftover, ports: [8000]); site.noun = "Test website"
-        #expect(Describe.advice(site)?.text.hasPrefix("Only the test website stops") == true)
+        #expect(Describe.advice(site)?.text == "closes the test website until it's restarted")
     }
 }
 
@@ -218,7 +216,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
     @Test func idleButSpinningIsStuck() {
         let v = Rules.judge(helper(cpu: 100, busy: false, idleFor: 2 * hour), track: heavyTrack(for: 30 * min), ctx: ctx())
         #expect(v.level == .warn)
-        #expect(Describe.summary({ var h = helper(cpu: 100, busy: false, idleFor: 0); h.verdict = v; return h }()) == "Claude chat stuck: “Project ideas”")
+        #expect(Describe.summary({ var h = helper(cpu: 100, busy: false, idleFor: 0); h.verdict = v; return h }()) == "Claude chat stuck in a loop: “Project ideas”")
         // Just finished a reply: a little CPU right after isn't "stuck".
         #expect(Rules.judge(helper(cpu: 100, busy: false, idleFor: 2 * min), track: heavyTrack(for: 30 * min), ctx: ctx()).level < .warn)
     }
@@ -252,14 +250,37 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
     }
 }
 
-@Suite struct HelperWording {
-    @Test func helperReasons() {
-        var h = item(.chatHelper); h.idleSince = now.addingTimeInterval(-19 * hour)
-        h.verdict = Verdict(level: .none, tag: "Idle 19 h")
-        #expect(Describe.reason(h, now: now) == "Idle for 19 h")
-        h.idleSince = now.addingTimeInterval(-18 * min); h.verdict = Verdict(level: .none, tag: "Idle 18 min")
-        #expect(Describe.reason(h, now: now) == "Idle for 18 min")
-        h.busy = true
-        #expect(Describe.reason(h, now: now) == "Working now")
+@Suite struct Subheaders {
+    @Test func oneStyleForEveryRow() {
+        var stuck = item(.leftover, startedAgo: 48 * hour, lastOutputAgo: 47 * hour)
+        stuck.noun = "Video export"
+        #expect(Rules.status(stuck, track: Track(firstSeen: now), ctx: ctx()) == "Running 2 days · last change 47 h ago")
+
+        let site = item(.appStarted, startedAgo: 3 * hour, ports: [5173])
+        let visited = Track(firstSeen: now.addingTimeInterval(-3 * hour), lastConnection: now.addingTimeInterval(-2 * hour))
+        #expect(Rules.status(site, track: visited, ctx: ctx()) == "Running 3 h · last visit 2 h ago")
+        #expect(Rules.status(site, track: Track(firstSeen: now), ctx: ctx()) == "Running 3 h · no visits yet")
+
+        let sim = item(.simulator, startedAgo: 31 * hour)
+        #expect(Rules.status(sim, track: Track(firstSeen: now), ctx: ctx(simUsedAgo: 30 * hour)) == "Running 31 h · last used 30 h ago")
+
+        var chat = item(.chatHelper); chat.idleSince = now.addingTimeInterval(-3 * hour)
+        #expect(Rules.status(chat, track: heavyTrack(for: 20 * min), ctx: ctx()) == "Busy 20 min · last message 3 h ago")
+        chat.busy = true
+        #expect(Rules.status(chat, track: heavyTrack(for: 20 * min), ctx: ctx()) == "Working now")
+
+        let hold = item(.sleepHold, startedAgo: 55 * hour)
+        #expect(Rules.status(hold, track: Track(firstSeen: now), ctx: ctx(claudeIdle: 3 * hour)) == "Awake 2 days · last Claude work 3 h ago")
+
+        var spot = item(.spotlight); spot.apps = ["a", "b", "c"]
+        #expect(Rules.status(spot, track: heavyTrack(for: 20 * min), ctx: ctx()) == "Busy 20 min · 3 build folders changed")
+    }
+
+    @Test func inUseVersusInactive() {
+        let sim = item(.simulator, startedAgo: hour)
+        #expect(Rules.judge(sim, track: Track(firstSeen: now), ctx: ctx(simUsedAgo: 5 * min)).level == .none)   // in use
+        #expect(Rules.judge(sim, track: Track(firstSeen: now), ctx: ctx(simUsedAgo: 45 * min)).level == .info)  // inactive
+        let visited = item(.leftover, ports: [8000], connections: 1)
+        #expect(Rules.judge(visited, track: Track(firstSeen: now), ctx: ctx()).level == .none)
     }
 }

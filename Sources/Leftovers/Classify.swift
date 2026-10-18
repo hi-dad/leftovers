@@ -173,23 +173,23 @@ enum Describe {
         case .simulator:
             return i.noun + (i.apps.isEmpty ? " running" : " running " + ListFormatter.localizedString(byJoining: i.apps))
         case .sleepHold:
-            return "Claude is keeping your Mac awake for no reason"
+            return "Claude keeping your Mac awake for no reason"
         case .android:
             return "Android emulator running (\(i.title))"
         case .claudePreview:
-            return "Something open in the Claude app keeps animating"
+            return "Claude app busy while no chat is working"
         case .spotlight:
-            return "Spotlight is indexing Claude's build files"
+            return "Spotlight re-indexing files on every Claude build"
         case .cloudSync:
-            return "Cloud sync is uploading Claude's build files"
+            return "Cloud sync re-uploading files on every Claude build"
         case .browserTab:
             return "Chrome tab still open: \(i.title)" + (i.project.map { " (\($0))" } ?? "")
         case .chatHelper:
-            return i.verdict.tag == "Stuck" ? "Claude chat stuck: “\(i.title)”" : "“\(i.title)”"
+            return i.verdict.tag == "Stuck" ? "Claude chat stuck in a loop: “\(i.title)”" : "“\(i.title)”"
         case .helperPileup:
             return "Too many Claude chats loaded (\(i.apps.count))"
         case .chromeExtension:
-            return "A Chrome extension keeps working in the background"
+            return "Chrome extension busy in the background"
         case .appStarted, .sessionJob:
             return i.ports.isEmpty ? i.noun + place : "Test website" + (i.project.map { " for \($0)" } ?? "")
         case .leftover:
@@ -202,82 +202,45 @@ enum Describe {
         }
     }
 
-    /// The second line: why it's listed, in plain words.
-    static func reason(_ i: Item, now: Date = Date()) -> String {
-        let tag = i.verdict.tag
-        if i.kind == .chatHelper {
-            if i.busy { return "Working now" }
-            if tag == "Stuck" { return "Busy although the chat is idle" }
-            if tag == "Kept" { return "You chose to keep this" }
-            let idle = duration(now.timeIntervalSince(i.idleSince ?? i.started))
-            return "Idle for \(idle)"
-        }
-        switch true {
-        case tag == "Kept": return "You chose to keep this running"
-        case tag == "In use": return "Someone has it open, so it's fine"
-        case tag == "Looks stuck":
-            return "Working hard, but no progress in \(duration(now.timeIntervalSince(i.lastOutput ?? i.started)))"
-        case tag == "Forgotten": return "Claude finished, but this kept going"
-        case tag.hasPrefix("Idle "): return "Nobody has opened it in \(tag.dropFirst(5))"
-        case tag.hasPrefix("Unused "): return "Not used in \(tag.dropFirst(7))"
-        case tag.hasPrefix("No Claude work"): return "Claude hasn't done anything in \(tag.dropFirst("No Claude work for ".count))"
-        case tag == "Busy preview": return "Probably a preview or artifact that's still playing"
-        case tag == "Indexing", tag == "Syncing":
-            return i.apps.prefix(2).map { ($0 as NSString).lastPathComponent == $0 ? $0 : (($0 as NSString).deletingLastPathComponent as NSString).lastPathComponent + "/" + ($0 as NSString).lastPathComponent }.joined(separator: ", ") + (i.apps.count > 2 ? " and \(i.apps.count - 2) more" : "")
-        case tag == "Working": return "Working now"
-        case tag == "Stuck": return "Busy although the chat is idle"
-        case tag == "Pile-up": return String(format: "Claude normally keeps at most 6 · about %.1f GB of memory", (i.memoryMB ?? 0) / 1024)
-        case tag == "Spinning": return "Busy for \(duration(now.timeIntervalSince(i.started))) with nothing to do"
-        case tag == "Tab busy": return "Chrome is busy and you haven't used it in a while"
-        case tag == "Open tab": return i.apps.contains("server stopped") ? "Its test website has stopped, so the tab can go" : "Open, but you haven't used Chrome in a while"
-        case i.kind == .leftover: return "Claude finished, but this is still running"
-        default: return "Running for \(duration(now.timeIntervalSince(i.started)))"
-        }
-    }
-
-    /// What the button does, so you know nothing important breaks: ("If you stop it", "…") or ("What to do", "…").
+    /// One short line under each row: whether stopping it is safe (or what it breaks), or the fix when there's
+    /// nothing to stop. ("Safe to stop", "its Claude chat already finished")
     static func advice(_ i: Item) -> (label: String, text: String)? {
-        let kept = "Your project files stay as they are."
+        let stuck = i.verdict.tag == "Looks stuck"
         switch i.kind {
-        case .simulator:
-            return ("If you shut it down", "Turns off the pretend \(i.noun.hasPrefix("iPad") ? "iPad" : "iPhone"). Your app and project aren't touched; it can be reopened anytime.")
-        case .android:
-            return ("If you shut it down", "Turns off the pretend Android phone. Your app and project aren't touched; it can be reopened anytime.")
+        case .simulator, .android:
+            return ("Safe to shut down", "your app and project aren't touched")
         case .browserTab:
-            return ("If you close it", "Just that tab closes. Nothing else is affected.")
+            return ("Safe to close", "nothing else is affected")
+        case .chatHelper:
+            return ("Safe to close", "the chat stays and reopens normally")
+        case .sleepHold:
+            return ("Fix", "in Claude, Settings → Claude Code → turn off “Keep awake on battery”")
+        case .helperPileup:
+            return ("Fix", "quit Claude (⌘Q) and reopen it; your chats are kept")
         case .claudePreview:
-            return ("What to do", "In Claude, close any preview, artifact or browser panel you're not using. Your chats and files aren't affected.")
+            return ("Fix", "close previews or panels you're not using; if none are open, quit and reopen Claude")
         case .spotlight:
             // The projects folder is two levels above a build folder (~/Desktop/claude/<project>/node_modules).
             let root = i.apps.first.map { (($0 as NSString).deletingLastPathComponent as NSString).deletingLastPathComponent } ?? "your Claude projects folder"
-            return ("What to do", "In Spotlight settings, open Search Privacy and add \(root). Spotlight then skips Claude's build files. (You won't find those project files in Spotlight search.)")
+            return ("Fix", "add \(root) to Spotlight's Search Privacy list")
         case .cloudSync:
-            return ("What to do", "Move Claude's projects out of the synced folder (for example to ~/Developer), so build files stop uploading. Nothing is deleted.")
-        case .sleepHold:
-            return ("What to do", "In Claude: Settings → Claude Code → turn off “Keep awake on battery”. Claude still keeps the Mac awake while plugged in.")
-        case .chatHelper:
-            let mem = i.memoryMB.map { $0 >= 1 ? String(format: "Frees about %.0f MB. ", $0) : "" } ?? ""
-            return ("If you close it", mem + "The chat isn't deleted and still opens normally; Claude loads a new helper when it needs one."
-                    + (i.verdict.tag == "Stuck" ? " Anything that chat was still running also stops." : ""))
-        case .helperPileup:
-            return ("What to do", "Quit Claude (⌘Q) and reopen it. That closes all the old helpers; your chats are kept.")
+            return ("Fix", "move Claude's projects out of the synced folder, e.g. to ~/Developer")
         case .chromeExtension:
-            return ("What to do", "In Chrome, open ⋮ → More Tools → Task Manager to see which extension it is, then turn it off and on again at chrome://extensions. If it's Claude in Chrome, updating it may help.")
+            return ("Fix", "find it in Chrome's Task Manager, then turn it off and on at chrome://extensions")
         case .sessionJob:
             return nil
         case .leftover, .appStarted:
             break
         }
         if !i.ports.isEmpty || i.noun == "Test website" {
-            return ("If you stop it", "Only the test website stops (its page shows an error until it's started again). \(kept)")
+            return ("Stopping", "closes the test website until it's restarted")
         }
         switch i.noun {
-        case "Video export": return ("If you stop it", "Stops the export; the half-made video stays unfinished. Nothing else is affected.")
-        case "App build": return ("If you stop it", "Stops the build; the app just isn't updated until it's built again. \(kept)")
-        case "Keep-awake command": return ("If you stop it", "Your Mac can sleep normally again. Nothing else changes.")
+        case "App build": return ("Stopping", "cancels this build; Claude can run it again")
+        case "Keep-awake command": return ("Safe to stop", "your Mac can sleep again")
+        case "Video export" where !stuck: return ("Stopping", "cancels the export before it finishes")
         default:
-            let what = i.noun.hasPrefix("Program") ? "this program" : "this \(i.noun.lowercased())"
-            return ("If you stop it", "Stops \(what) and anything it started. Unfinished work it was doing is lost. \(kept)")
+            return ("Safe to stop", stuck ? "it isn't making progress" : "its Claude chat already finished")
         }
     }
 
