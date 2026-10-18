@@ -40,6 +40,9 @@ enum ItemKind: String, Codable, CaseIterable {
     case cloudSync     // iCloud/OneDrive/Dropbox busy uploading Claude's build folders
     case android       // an Android emulator
     case browserTab    // a Chrome tab showing one of Claude's test pages
+    case chatHelper    // the background program behind one Claude chat
+    case helperPileup  // far more chat helpers than chats you use (a known Claude app bug)
+    case chromeExtension // a Chrome extension stuck working in the background
 }
 
 /// One row in the menu: a process family, a simulator, or a sleep hold.
@@ -68,6 +71,9 @@ struct Item: Identifiable, Codable, Equatable {
     var noun = ""                 // plain name of what it is ("Python script", "Video export")
     var starter: String?          // the script that started it, when that's a different program
     var apps: [String] = []       // apps open in a simulator
+    var memoryMB: Double?         // memory it holds
+    var idleSince: Date?          // chat helpers: when the chat last stopped working
+    var busy = false              // chat helpers: Claude is working in that chat right now
 }
 
 struct BatteryState: Codable, Equatable {

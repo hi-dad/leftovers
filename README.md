@@ -25,6 +25,11 @@ At the top there's always a clear answer: a green **All clear**, or **"2 things 
 | **Claude app previews** | The Claude app drawing hard while no chat is working, usually an animated preview or artifact left open. | Open Claude |
 | **Spotlight** | Spotlight busy indexing Claude's freshly made build folders (node_modules, .build…). | Open Spotlight settings |
 | **Cloud sync** | iCloud/OneDrive/Dropbox busy uploading Claude's build folders. | Show folder |
+| **Claude chat stuck** | A chat's helper program says it's idle but keeps the CPU busy (a known Claude Code bug). | Close |
+| **Helper pile-up** | 15+ chat helpers loaded at once (a known Claude app bug that can reach 150). | Quit Claude |
+| **Chrome extension spinning** | A Chrome extension busy in the background for 10+ minutes (Claude in Chrome has had this bug). | Open Chrome extensions |
+
+At the bottom, **Chats loaded in the background** (folded up) lists each Claude chat whose helper is loaded, whether it's working, how long it's been idle, and its memory. Ones not used for 6+ hours are marked, and you can close any idle one; the chat itself isn't deleted.
 
 Every row says what its button does ("If you stop it: only the test website stops…"), so you know nothing important breaks. Leftovers watches Claude's scratch folders and **every folder a Claude chat has worked in** automatically. You can add more in Settings.
 

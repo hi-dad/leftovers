@@ -248,17 +248,45 @@ final class Monitor: NSObject, ObservableObject {
 
         // The Claude app's own processes tell whether a session is working and whether Claude's simulator
         // panel is showing (used by the rules; not shown as a row).
-        let sessionPids = Set(g.sessions.map(\.pid))
         var renderCPU = 0.0, renderWatts = 0.0
-        for p in g.claudeApp + g.sessions {
+        for p in g.claudeApp {
             let r = rate(p)
             if p.name.contains("Renderer") { renderCPU += r.cpu; renderWatts += r.watts }
             // Claude's simulator panel streams frames while it is showing a simulator.
             if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
-            // A session is working when its Claude Code process is busy...
-            if sessionPids.contains(p.pid), r.cpu >= 1 { facts.claudeWorking = true }
         }
-        // ...or it was active in the last 10 minutes.
+
+        // Chat helpers: the background program behind each Claude chat. Each one says whether its chat is
+        // busy, so "Claude is working" comes from that, not from CPU (a stuck helper is busy but not working).
+        let helpers = HelperInfo.load()
+        var helperItems: [Item] = []
+        for p in g.sessions {
+            var fam: [ProcRecord] = [], stack = [p]
+            while let q = stack.popLast() { fam.append(q); stack += children[q.pid] ?? [] }
+            let r = rate(p)
+            let mem = fam.compactMap { ProcScan.usage($0.pid)?.memoryMB }.reduce(0, +)
+            let info = helpers[p.pid]
+            if info?.busy == true { facts.claudeWorking = true }
+            helperItems.append(Item(id: "helper-\(p.pid)-\(Int(p.start.timeIntervalSince1970))", kind: .chatHelper,
+                                    title: info?.name ?? "Claude chat (\(classifier.project(for: p.cwd) ?? "terminal"))",
+                                    detail: "", command: p.commandLine.prefix(200).description,
+                                    pids: fam.map(\.pid), started: p.start, cpuPercent: r.cpu, watts: r.watts,
+                                    batteryPerHour: perHour(r.watts), averageCpu: r.average,
+                                    startTimes: fam.map { $0.start.timeIntervalSince1970 },
+                                    keepKey: "helper-\(info?.name ?? String(p.pid))", noun: "Chat helper",
+                                    memoryMB: mem, idleSince: info.flatMap { $0.busy ? nil : $0.statusSince },
+                                    busy: info?.busy ?? false))
+        }
+        items += helperItems
+        // Far more helpers than anyone has chats open: the Claude app is failing to close old ones.
+        if helperItems.count >= 15 {
+            let mem = helperItems.compactMap(\.memoryMB).reduce(0, +)
+            items.append(Item(id: "helper-pileup", kind: .helperPileup, title: "\(helperItems.count) chat helpers",
+                              detail: "", command: "", pids: helperItems.flatMap(\.pids), started: now,
+                              cpuPercent: helperItems.map(\.cpuPercent).reduce(0, +), keepKey: "helper-pileup",
+                              noun: "Chat helpers", memoryMB: mem))
+        }
+        // Chats active in the last 10 minutes count as working too (covers helpers that write no status).
         if sessions.sessions.values.contains(where: { now.timeIntervalSince($0.lastActivityAt) < 600 }) {
             facts.claudeWorking = true
         }
@@ -316,7 +344,9 @@ final class Monitor: NSObject, ObservableObject {
         // #14 Chrome tabs showing Claude's test pages. Chrome's page processes' total use is attached, since
         // Chrome doesn't say which tab uses what.
         if procs.contains(where: { $0.name == "Google Chrome" && $0.path.hasPrefix("/Applications/") }) {
-            let renderers = procs.filter { $0.name.hasPrefix("Google Chrome Helper (Renderer)") }
+            // Page processes only (extension processes are checked on their own below).
+            let renderers = procs.filter { $0.path.contains("Google Chrome") && $0.name.contains("Renderer")
+                && !$0.args.contains("--extension-process") }
             var chromeCPU = 0.0
             for r in renderers { chromeCPU += rate(r).cpu }
             let servers = items.filter { !$0.ports.isEmpty }
@@ -329,6 +359,17 @@ final class Monitor: NSObject, ObservableObject {
                                   cpuPercent: chromeCPU, keepKey: "tab-" + tab.url, noun: "Chrome tab",
                                   apps: server == nil && !tab.url.hasPrefix("file:") ? ["server stopped"] : []))
             }
+        }
+
+        // Chrome extensions stuck working in the background (Claude in Chrome has had this bug). Chrome
+        // doesn't say which extension a process belongs to, so the advice points to Chrome's Task Manager.
+        for p in procs where p.path.contains("Google Chrome") && p.args.contains("--extension-process") {
+            let r = rate(p)
+            guard r.cpu >= 10 else { continue }
+            items.append(Item(id: "ext-\(p.pid)-\(Int(p.start.timeIntervalSince1970))", kind: .chromeExtension,
+                              title: "Chrome extension", detail: "", command: "", pids: [p.pid], started: p.start,
+                              cpuPercent: r.cpu, watts: r.watts, batteryPerHour: perHour(r.watts),
+                              averageCpu: r.average, keepKey: "chrome-extension", noun: "Chrome extension"))
         }
 
         previous = samples

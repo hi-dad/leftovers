@@ -3,7 +3,7 @@ import Foundation
 
 /// Stop and Keep. Nothing here runs without a click.
 extension Monitor {
-    func canStop(_ i: Item) -> Bool { [.leftover, .appStarted, .simulator, .android].contains(i.kind) }
+    func canStop(_ i: Item) -> Bool { [.leftover, .appStarted, .simulator, .android, .chatHelper].contains(i.kind) }
 
     func stop(_ i: Item) {
         switch i.kind {
@@ -16,7 +16,7 @@ extension Monitor {
                 try? p.run(); p.waitUntilExit()
                 DispatchQueue.main.async { self.logStop(i); self.scan() }
             }
-        case .leftover, .appStarted, .android:
+        case .leftover, .appStarted, .android, .chatHelper:
             let members = Array(zip(i.pids, i.startTimes))
             DispatchQueue.global(qos: .userInitiated).async {
                 // Only signal a pid if it is still the same process (pids get reused).
@@ -50,6 +50,15 @@ extension Monitor {
             Extras.closeChromeTabs(url: i.command)
             DispatchQueue.main.async { self.scan() }
         }
+    }
+
+    /// Asks the Claude app to quit normally (same as ⌘Q), which closes all its chat helpers.
+    func quitClaude() {
+        NSRunningApplication.runningApplications(withBundleIdentifier: "com.anthropic.claudefordesktop").forEach { $0.terminate() }
+    }
+
+    func openChromeExtensions() {
+        _ = Extras.run("/usr/bin/open", ["-a", "Google Chrome", "chrome://extensions"])
     }
 
     func openSpotlightSettings() {

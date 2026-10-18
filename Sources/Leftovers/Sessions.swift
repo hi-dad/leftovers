@@ -63,3 +63,30 @@ struct SessionIndex {
         return best.count == 1 ? (best[0], true) : nil
     }
 }
+
+/// What each Claude chat's helper program says about itself: Claude Code writes ~/.claude/sessions/<pid>.json
+/// with the chat's name and whether it is busy or idle. Read-only; the .key files next to them are never opened.
+struct HelperInfo: Equatable {
+    var pid: pid_t
+    var name: String
+    var busy: Bool
+    var statusSince: Date
+    var fromApp: Bool   // started by the Claude app (vs. a terminal)
+
+    static let folder = NSHomeDirectory() + "/.claude/sessions"
+
+    static func load(from folder: String = folder) -> [pid_t: HelperInfo] {
+        var out: [pid_t: HelperInfo] = [:]
+        for f in (try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? [] where f.hasSuffix(".json") {
+            guard let data = FileManager.default.contents(atPath: folder + "/" + f),
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let pid = (obj["pid"] as? NSNumber)?.int32Value else { continue }
+            let since = ((obj["statusUpdatedAt"] as? Double) ?? (obj["updatedAt"] as? Double) ?? 0) / 1000
+            out[pid] = HelperInfo(pid: pid, name: (obj["name"] as? String) ?? "Untitled chat",
+                                  busy: (obj["status"] as? String) == "busy",
+                                  statusSince: Date(timeIntervalSince1970: since),
+                                  fromApp: (obj["entrypoint"] as? String) == "claude-desktop")
+        }
+        return out
+    }
+}

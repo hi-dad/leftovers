@@ -184,6 +184,12 @@ enum Describe {
             return "Cloud sync is uploading Claude's build files"
         case .browserTab:
             return "Chrome tab still open: \(i.title)" + (i.project.map { " (\($0))" } ?? "")
+        case .chatHelper:
+            return i.verdict.tag == "Stuck" ? "Claude chat stuck: “\(i.title)”" : "“\(i.title)”"
+        case .helperPileup:
+            return "The Claude app has \(i.title) open"
+        case .chromeExtension:
+            return "A Chrome extension keeps working in the background"
         case .appStarted, .sessionJob:
             return i.ports.isEmpty ? i.noun + place : "Test website" + (i.project.map { " for \($0)" } ?? "")
         case .leftover:
@@ -199,6 +205,13 @@ enum Describe {
     /// The second line: why it's listed, in plain words.
     static func reason(_ i: Item, now: Date = Date()) -> String {
         let tag = i.verdict.tag
+        if i.kind == .chatHelper {
+            if i.busy { return "Working now" }
+            if tag == "Stuck" { return "Busy although the chat is idle" }
+            if tag == "Kept" { return "You chose to keep this" }
+            let idle = duration(now.timeIntervalSince(i.idleSince ?? i.started))
+            return i.verdict.level == .info ? "Not used in \(idle)" : "Idle for \(idle)"
+        }
         switch true {
         case tag == "Kept": return "You chose to keep this running"
         case tag == "In use": return "Someone has it open, so it's fine"
@@ -211,6 +224,10 @@ enum Describe {
         case tag == "Busy preview": return "Probably a preview or artifact that's still playing"
         case tag == "Indexing", tag == "Syncing":
             return i.apps.prefix(2).map { ($0 as NSString).lastPathComponent == $0 ? $0 : (($0 as NSString).deletingLastPathComponent as NSString).lastPathComponent + "/" + ($0 as NSString).lastPathComponent }.joined(separator: ", ") + (i.apps.count > 2 ? " and \(i.apps.count - 2) more" : "")
+        case tag == "Working": return "Working now"
+        case tag == "Stuck": return "Busy although the chat is idle"
+        case tag == "Pile-up": return String(format: "Far more than the chats you use · about %.1f GB of memory", (i.memoryMB ?? 0) / 1024)
+        case tag == "Spinning": return "Busy for \(duration(now.timeIntervalSince(i.started))) with nothing to do"
         case tag == "Tab busy": return "Chrome is busy and you haven't used it in a while"
         case tag == "Open tab": return i.apps.contains("server stopped") ? "Its test website has stopped, so the tab can go" : "Open, but you haven't used Chrome in a while"
         case i.kind == .leftover: return "Claude finished, but this is still running"
@@ -236,6 +253,14 @@ enum Describe {
             return ("What to do", "Move Claude's projects out of the synced folder (for example to ~/Developer), so build files stop uploading. Nothing is deleted.")
         case .sleepHold:
             return ("What to do", "In Claude: Settings → Claude Code → turn off “Keep awake on battery”. Claude still keeps the Mac awake while plugged in.")
+        case .chatHelper:
+            let mem = i.memoryMB.map { $0 >= 1 ? String(format: "Frees about %.0f MB. ", $0) : "" } ?? ""
+            return ("If you close it", mem + "The chat isn't deleted; Claude starts a new helper when you go back to it."
+                    + (i.verdict.tag == "Stuck" ? " Anything that chat was still running also stops." : ""))
+        case .helperPileup:
+            return ("What to do", "Quit Claude (⌘Q) and reopen it. That closes all the old helpers; your chats are kept.")
+        case .chromeExtension:
+            return ("What to do", "In Chrome, open ⋮ → More Tools → Task Manager to see which extension it is, then turn it off and on again at chrome://extensions. If it's Claude in Chrome, updating it may help.")
         case .sessionJob:
             return nil
         case .leftover, .appStarted:

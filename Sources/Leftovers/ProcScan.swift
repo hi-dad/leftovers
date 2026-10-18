@@ -46,14 +46,14 @@ enum ProcScan {
     }
 
     /// Total CPU seconds and energy (joules) the process has used since it started.
-    static func usage(_ pid: pid_t) -> (cpu: Double, joules: Double)? {
+    static func usage(_ pid: pid_t) -> (cpu: Double, joules: Double, memoryMB: Double)? {
         var ru = rusage_info_v6()
         let r = withUnsafeMutablePointer(to: &ru) {
             $0.withMemoryRebound(to: rusage_info_t?.self, capacity: 1) { proc_pid_rusage(pid, RUSAGE_INFO_V6, $0) }
         }
         guard r == 0 else { return nil }
         let cpu = Double(ru.ri_user_time + ru.ri_system_time) * ticksToSeconds
-        return (cpu, Double(ru.ri_energy_nj) / 1e9)
+        return (cpu, Double(ru.ri_energy_nj) / 1e9, Double(ru.ri_phys_footprint) / 1_048_576)
     }
 
     /// Files the process has open for writing, and its TCP sockets.

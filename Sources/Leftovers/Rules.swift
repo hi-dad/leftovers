@@ -137,6 +137,28 @@ enum Rules {
             }
             return Verdict(level: .info, tag: "Open tab")
 
+        case .chatHelper:
+            if i.busy { return Verdict(level: .none, tag: "Working") }
+            let idle = now.timeIntervalSince(i.idleSince ?? i.started)
+            // Says it's idle but keeps the CPU busy: stuck in a loop (a known Claude Code bug).
+            if isHeavy(i), heavyFor >= 10 * min * scale, idle >= 10 * min {
+                return Verdict(level: .warn, tag: "Stuck",
+                               message: "The helper for your “\(i.title)” chat has been busy for \(Describe.duration(heavyFor)) although the chat is idle.\(cost)")
+            }
+            if idle >= 6 * hour { return Verdict(level: .info, tag: "Not used in \(Describe.duration(idle))") }
+            return Verdict(level: .none, tag: "Idle \(Describe.duration(idle))")
+
+        case .helperPileup:
+            return Verdict(level: .warn, tag: "Pile-up",
+                           message: "The Claude app has \(i.title) open, holding about \(Int((i.memoryMB ?? 0) / 1024 * 10) / 10) GB of memory. Quitting and reopening Claude clears them.")
+
+        case .chromeExtension:
+            if isHeavy(i), heavyFor >= 10 * min * scale {
+                return Verdict(level: .warn, tag: "Spinning",
+                               message: "A Chrome extension has been busy in the background for \(Describe.duration(heavyFor)).\(cost)")
+            }
+            return Verdict(level: .none, tag: "")
+
         case .sleepHold:
             let held = now.timeIntervalSince(i.started)
             let idle = now.timeIntervalSince(ctx.lastClaudeWorking)

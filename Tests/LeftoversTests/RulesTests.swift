@@ -202,3 +202,63 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(idx.workFolders == [home + "/Desktop/Other", home + "/Desktop/claude"])
     }
 }
+
+@Suite struct ChatHelpers {
+    func helper(cpu: Double, busy: Bool, idleFor: TimeInterval) -> Item {
+        var h = item(.chatHelper, cpu: cpu, perHour: cpu / 10)
+        h.title = "Project ideas"; h.busy = busy
+        h.idleSince = busy ? nil : now.addingTimeInterval(-idleFor)
+        return h
+    }
+
+    @Test func busyChatsAreLeftAlone() {
+        #expect(Rules.judge(helper(cpu: 90, busy: true, idleFor: 0), track: heavyTrack(for: hour), ctx: ctx()).level == .none)
+    }
+
+    @Test func idleButSpinningIsStuck() {
+        let v = Rules.judge(helper(cpu: 100, busy: false, idleFor: 2 * hour), track: heavyTrack(for: 30 * min), ctx: ctx())
+        #expect(v.level == .warn)
+        #expect(Describe.summary({ var h = helper(cpu: 100, busy: false, idleFor: 0); h.verdict = v; return h }()) == "Claude chat stuck: “Project ideas”")
+        // Just finished a reply: a little CPU right after isn't "stuck".
+        #expect(Rules.judge(helper(cpu: 100, busy: false, idleFor: 2 * min), track: heavyTrack(for: 30 * min), ctx: ctx()).level < .warn)
+    }
+
+    @Test func oldQuietHelpersAreMarked() {
+        #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 12 * hour), track: Track(firstSeen: now), ctx: ctx()).tag == "Not used in 12 h")
+        #expect(Rules.judge(helper(cpu: 0, busy: false, idleFor: 20 * min), track: Track(firstSeen: now), ctx: ctx()).level == .none)
+    }
+
+    @Test func pileupAndExtensions() {
+        var pile = item(.helperPileup); pile.title = "150 chat helpers"; pile.memoryMB = 15_000
+        #expect(Rules.judge(pile, track: Track(firstSeen: now), ctx: ctx()).level == .warn)
+        let ext = item(.chromeExtension, cpu: 65, perHour: 4)
+        #expect(Rules.judge(ext, track: heavyTrack(for: 3 * min), ctx: ctx()).level == .none)
+        #expect(Rules.judge(ext, track: heavyTrack(for: 20 * min), ctx: ctx()).level == .warn)
+    }
+
+    @Test func readsHelperStatusFiles() throws {
+        let dir = NSTemporaryDirectory() + "leftovers-test-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(atPath: dir) }
+        let json = #"{"pid": 4242, "name": "Snail House", "status": "idle", "statusUpdatedAt": 1792289418920, "entrypoint": "claude-desktop"}"#
+        try json.write(toFile: dir + "/4242.json", atomically: true, encoding: .utf8)
+        try "secret".write(toFile: dir + "/4242.abc.key", atomically: true, encoding: .utf8)
+        let h = HelperInfo.load(from: dir)
+        #expect(h.count == 1)
+        #expect(h[4242]?.name == "Snail House")
+        #expect(h[4242]?.busy == false)
+        #expect(h[4242]?.fromApp == true)
+    }
+}
+
+@Suite struct HelperWording {
+    @Test func helperReasons() {
+        var h = item(.chatHelper); h.idleSince = now.addingTimeInterval(-19 * hour)
+        h.verdict = Verdict(level: .info, tag: "Not used in 19 h")
+        #expect(Describe.reason(h, now: now) == "Not used in 19 h")
+        h.idleSince = now.addingTimeInterval(-18 * min); h.verdict = Verdict(level: .none, tag: "Idle 18 min")
+        #expect(Describe.reason(h, now: now) == "Idle for 18 min")
+        h.busy = true
+        #expect(Describe.reason(h, now: now) == "Working now")
+    }
+}
