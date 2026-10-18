@@ -2,7 +2,7 @@ import AppKit
 import IOKit.ps
 import UserNotifications
 
-/// Posts one notification per problem (again only if it gets worse), with Stop/Keep/Snooze buttons,
+/// Posts one notification per problem (again only if it gets worse), with Stop/Keep buttons,
 /// plus a single heads-up when you unplug while things are still running.
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     static let shared = Notifier()
@@ -18,14 +18,17 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         let stop = UNNotificationAction(identifier: "stop", title: "Stop it", options: [.destructive])
         let shut = UNNotificationAction(identifier: "stop", title: "Shut down", options: [.destructive])
         let keep = UNNotificationAction(identifier: "keep", title: "Keep running")
-        let snooze = UNNotificationAction(identifier: "snooze", title: "Remind me in an hour")
         let claude = UNNotificationAction(identifier: "claude", title: "Open Claude", options: [.foreground])
         let review = UNNotificationAction(identifier: "review", title: "Review", options: [.foreground])
+        let closeTab = UNNotificationAction(identifier: "closetab", title: "Close tab")
+        let spotlight = UNNotificationAction(identifier: "spotlight", title: "Open Spotlight settings", options: [.foreground])
         c.setNotificationCategories([
-            UNNotificationCategory(identifier: "leftover", actions: [stop, keep, snooze], intentIdentifiers: []),
-            UNNotificationCategory(identifier: "simulator", actions: [shut, keep, snooze], intentIdentifiers: []),
-            UNNotificationCategory(identifier: "sleep", actions: [claude, snooze], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "leftover", actions: [stop, keep], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "simulator", actions: [shut, keep], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "sleep", actions: [claude], intentIdentifiers: []),
             UNNotificationCategory(identifier: "review", actions: [review], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "tab", actions: [closeTab, keep], intentIdentifiers: []),
+            UNNotificationCategory(identifier: "spotlight", actions: [spotlight], intentIdentifiers: []),
         ])
 
         m.onScanned = { [weak self] wasOnBattery in self?.afterScan(wasOnBattery: wasOnBattery) }
@@ -48,7 +51,15 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             guard (notified[i.id] ?? .none) < i.verdict.level else { continue }
             notified[i.id] = i.verdict.level
             let title = Describe.summary(i)
-            let category = i.kind == .simulator ? "simulator" : i.kind == .sleepHold ? "sleep" : "leftover"
+            let category: String
+            switch i.kind {
+            case .simulator, .android: category = "simulator"
+            case .sleepHold, .claudePreview: category = "sleep"
+            case .browserTab: category = "tab"
+            case .spotlight: category = "spotlight"
+            case .cloudSync: category = "review"
+            default: category = "leftover"
+            }
             post(id: i.id, title: title, body: i.verdict.message, category: category, quiet: quiet)
         }
 
@@ -94,8 +105,9 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             switch r.actionIdentifier {
             case "stop": if let item { m.stop(item) }
             case "keep": if let item { m.keep(item) }
-            case "snooze": if let item { m.snooze(item) }
             case "claude": m.openClaude()
+            case "closetab": if let item { m.closeTab(item) }
+            case "spotlight": m.openSpotlightSettings()
             default: onReview?()   // "Review" or a click on the notification itself
             }
             done()

@@ -28,6 +28,14 @@ struct SessionIndex {
         return idx
     }
 
+    /// Every folder a Claude chat on this Mac has worked in (not your home folder itself, which would be everything).
+    var workFolders: [String] {
+        let home = NSHomeDirectory()
+        let all = Set(sessions.values.map(\.cwd)).filter { !$0.isEmpty && $0 != "/" && $0 != home && $0 != home + "/Desktop" }
+        // Drop folders inside another listed folder.
+        return all.filter { f in !all.contains { f != $0 && f.hasPrefix($0 + "/") } }.sorted()
+    }
+
     private static let uuid = try! NSRegularExpression(
         pattern: "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", options: [.caseInsensitive])
 

@@ -35,6 +35,11 @@ enum ItemKind: String, Codable, CaseIterable {
     case appStarted    // started by the Claude app itself (preview servers and the like)
     case simulator     // a booted iPhone/iPad simulator
     case sleepHold     // something keeping the Mac from sleeping
+    case claudePreview // the Claude app's windows busy drawing (an animated preview or artifact)
+    case spotlight     // Spotlight busy indexing Claude's build folders
+    case cloudSync     // iCloud/OneDrive/Dropbox busy uploading Claude's build folders
+    case android       // an Android emulator
+    case browserTab    // a Chrome tab showing one of Claude's test pages
 }
 
 /// One row in the menu: a process family, a simulator, or a sleep hold.

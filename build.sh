@@ -30,6 +30,8 @@ cat > $APP/Contents/Info.plist <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSUIElement</key><true/>
+  <key>NSAppleEventsUsageDescription</key><string>Leftovers reads your Chrome tab addresses to find test pages Claude left open, and closes a tab when you click Close tab.</string>
+  <key>NSDesktopFolderUsageDescription</key><string>Leftovers checks whether Claude's build folders on your Desktop are what Spotlight or cloud sync is busy with. It only looks at folder dates.</string>
   <key>NSHumanReadableCopyright</key><string>Free and offline.</string>
 </dict></plist>
 PLIST

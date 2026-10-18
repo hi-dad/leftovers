@@ -20,7 +20,7 @@ struct SettingsView: View {
                 .onChange(of: notify) { _, on in UserDefaults.standard.set(on, forKey: "notify") }
 
             section("Project folders",
-                    note: "Anything still running from these folders after its Claude session ends counts as a leftover. Claude's own scratch folders are always watched.") {
+                    note: "Anything still running from these folders after its Claude chat ends counts as a leftover. Also watched automatically: Claude's scratch folders and every folder a Claude chat has worked in\(autoCount).") {
                 ForEach(folders, id: \.self) { f in
                     row((f as NSString).abbreviatingWithTildeInPath, button: "Remove") {
                         folders.removeAll { $0 == f }; save()
@@ -57,6 +57,11 @@ struct SettingsView: View {
             Spacer()
             Button(button, action: action).buttonStyle(.borderless).font(.system(size: 11, weight: .medium))
         }
+    }
+
+    private var autoCount: String {
+        let n = SessionIndex.load().workFolders.count
+        return n > 0 ? " (\(n) right now)" : ""
     }
 
     private func save() {

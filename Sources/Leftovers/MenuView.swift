@@ -17,8 +17,9 @@ struct MenuView: View {
     private var shown: [Item] {
         m.items.filter { i in
             switch i.kind {
-            case .sleepHold: i.verdict.level >= .warn
-            default: true
+            case .leftover, .appStarted, .sessionJob, .simulator, .android: true
+            case .browserTab: i.verdict.level >= .info
+            case .sleepHold, .claudePreview, .spotlight, .cloudSync: i.verdict.level >= .warn
             }
         }
     }
@@ -149,7 +150,12 @@ struct ItemRow: View {
         case .leftover: item.ports.isEmpty ? "exclamationmark.triangle" : "globe"
         case .sessionJob, .appStarted: "globe"
         case .simulator: "iphone"
+        case .android: "smartphone"
         case .sleepHold: "moon.zzz"
+        case .claudePreview: "play.rectangle"
+        case .spotlight: "magnifyingglass"
+        case .cloudSync: "icloud.and.arrow.up"
+        case .browserTab: "safari"
         }
     }
 
@@ -177,6 +183,13 @@ struct ItemRow: View {
                         .foregroundStyle(costColor)
                         .help("Share of your battery this uses per hour")
                 }
+            }
+            if let advice = Describe.advice(item), !actions.isEmpty {
+                (Text(advice.label + ": ").fontWeight(.semibold) + Text(advice.text))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.leading, 26)
             }
             HStack(spacing: 14) {
                 ForEach(actions, id: \.0) { label, action in
@@ -212,6 +225,19 @@ struct ItemRow: View {
             rows.append(("Device", item.title))
             if !item.apps.isEmpty { rows.append(("App", item.apps.joined(separator: ", "))) }
             rows.append(("Booted", Describe.duration(now.timeIntervalSince(item.started)) + " ago"))
+        case .android:
+            rows.append(("Device", item.title))
+            rows.append(("Running for", Describe.duration(now.timeIntervalSince(item.started))))
+        case .spotlight, .cloudSync:
+            rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
+            for (n, f) in item.apps.enumerated() { rows.append((n == 0 ? "Build folders" : " ", f)) }
+        case .claudePreview:
+            rows.append(("Claude windows", String(format: "%.0f%% CPU", item.cpuPercent)))
+        case .browserTab:
+            rows.append(("Page", item.title))
+            rows.append(("Address", item.command))
+            if let p = item.project { rows.append(("Project", p)) }
+            rows.append(("Chrome pages", String(format: "%.0f%% CPU in total", item.cpuPercent)))
         case .sleepHold:
             rows.append(("What", item.title))
             rows.append(("Since", Describe.duration(now.timeIntervalSince(item.started)) + " ago"))
@@ -238,7 +264,7 @@ struct ItemRow: View {
                     Text(v).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                 }
             }
-            if item.kind != .simulator && item.kind != .sleepHold {
+            if [.leftover, .appStarted, .sessionJob].contains(item.kind) {
                 Text(item.command)
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(.secondary)
@@ -262,7 +288,9 @@ struct ItemRow: View {
     }
 
     private var actions: [(String, () -> Void)] {
-        if stopping { return [(item.kind == .simulator ? "Shutting down…" : "Stopping…", {})] }
+        if stopping {
+            return [(item.kind == .browserTab ? "Closing…" : [.simulator, .android].contains(item.kind) ? "Shutting down…" : "Stopping…", {})]
+        }
         var a: [(String, () -> Void)] = []
         let stop = { stopping = true; m.stop(item) }
         if !item.ports.isEmpty { a.append(("Open", { m.openInBrowser(item) })) }
@@ -276,9 +304,19 @@ struct ItemRow: View {
             } else if item.verdict.level >= .info {
                 a.append(("Keep", { m.keep(item) }))
             }
-            if item.verdict.level >= .warn { a.append(("Snooze 1 h", { m.snooze(item) })) }
-        case .sleepHold:
+        case .android:
+            a.append(("Shut down", stop))
+            if m.kept[item.keepKey] != nil { a.append(("Stop keeping", { m.unkeep(item.keepKey) })) }
+            else if item.verdict.level >= .info { a.append(("Keep", { m.keep(item) })) }
+        case .browserTab:
+            a.append(("Close tab", { stopping = true; m.closeTab(item) }))
+            if m.kept[item.keepKey] == nil { a.append(("Keep", { m.keep(item) })) }
+        case .sleepHold, .claudePreview:
             a.append(("Open Claude", { m.openClaude() }))
+        case .spotlight:
+            a.append(("Open Spotlight settings", { m.openSpotlightSettings() }))
+        case .cloudSync:
+            if let f = item.apps.first { a.append(("Show folder", { m.reveal(f) })) }
         case .sessionJob:
             break
         }

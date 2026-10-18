@@ -16,7 +16,7 @@ At the top there's always a clear answer: a green **All clear**, or **"2 things 
 
 | Section | What it means | Buttons |
 |---|---|---|
-| **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. | Stop · Keep · Snooze |
+| **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. | Stop · Keep |
 | **Keeping your Mac awake** | Only when it's a problem: on battery, while Claude isn't working. | Open Claude |
 | **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Keep |
 | **Started by the Claude app** / **Running in a Claude session** | Dev/preview servers, with whether anyone is connected. | Open · Stop |

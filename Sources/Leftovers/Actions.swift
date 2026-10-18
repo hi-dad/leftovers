@@ -1,9 +1,9 @@
 import AppKit
 import Foundation
 
-/// Stop, Keep and Snooze. Nothing here runs without a click.
+/// Stop and Keep. Nothing here runs without a click.
 extension Monitor {
-    func canStop(_ i: Item) -> Bool { [.leftover, .appStarted, .simulator].contains(i.kind) }
+    func canStop(_ i: Item) -> Bool { [.leftover, .appStarted, .simulator, .android].contains(i.kind) }
 
     func stop(_ i: Item) {
         switch i.kind {
@@ -16,7 +16,7 @@ extension Monitor {
                 try? p.run(); p.waitUntilExit()
                 DispatchQueue.main.async { self.logStop(i); self.scan() }
             }
-        case .leftover, .appStarted:
+        case .leftover, .appStarted, .android:
             let members = Array(zip(i.pids, i.startTimes))
             DispatchQueue.global(qos: .userInitiated).async {
                 // Only signal a pid if it is still the same process (pids get reused).
@@ -45,9 +45,21 @@ extension Monitor {
         rejudge()
     }
 
-    func snooze(_ i: Item, hours: Double = 1) {
-        snoozedUntil[i.id] = Date().addingTimeInterval(hours * 3600)
-        rejudge()
+    func closeTab(_ i: Item) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            Extras.closeChromeTabs(url: i.command)
+            DispatchQueue.main.async { self.scan() }
+        }
+    }
+
+    func openSpotlightSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Spotlight-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    func reveal(_ path: String) {
+        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: (path as NSString).expandingTildeInPath)])
     }
 
     func openInBrowser(_ i: Item) {
@@ -72,7 +84,7 @@ extension Monitor {
                                            configuration: NSWorkspace.OpenConfiguration())
     }
 
-    /// Re-applies the rules without rescanning (after Keep/Snooze).
+    /// Re-applies the rules without rescanning (after Keep).
     private func rejudge() {
         let raw = items
         let tracksBefore = tracks

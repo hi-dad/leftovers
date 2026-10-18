@@ -14,11 +14,12 @@ final class Monitor: NSObject, ObservableObject {
     // Memory between scans (see Rules).
     var tracks: [String: Track] = [:]
     var lastSimulatorUse: Date?
+    var lastAndroidUse: Date?
+    var lastChromeUse: Date?
     var lastClaudeWorking = SessionIndex.load().sessions.values.map(\.lastActivityAt).max() ?? Date()
     @Published var kept: [String: String] {   // keepKey → label shown in Settings
         didSet { UserDefaults.standard.set(kept, forKey: "kept") }
     }
-    var snoozedUntil: [String: Date] = [:]
 
     override init() {
         kept = (UserDefaults.standard.dictionary(forKey: "kept") as? [String: String]) ?? [:]
@@ -95,7 +96,8 @@ final class Monitor: NSObject, ObservableObject {
         if facts.claudeWorking { lastClaudeWorking = now }
         if facts.simPanelActive { lastSimulatorUse = now }
         let ctx = RuleContext(now: now, onBattery: battery.onBattery, lastSimulatorUse: lastSimulatorUse,
-                              lastClaudeWorking: lastClaudeWorking, kept: Set(kept.keys), snoozedUntil: snoozedUntil,
+                              lastClaudeWorking: lastClaudeWorking, lastAndroidUse: lastAndroidUse,
+                              lastChromeUse: lastChromeUse, kept: Set(kept.keys),
                               speedup: max(1, UserDefaults.standard.double(forKey: "ruleSpeedup")))
         var newTracks: [String: Track] = [:]
         items = raw.map { item in
@@ -106,7 +108,6 @@ final class Monitor: NSObject, ObservableObject {
             return i
         }
         tracks = newTracks
-        snoozedUntil = snoozedUntil.filter { $0.value > now }
     }
 
     /// For testing from Terminal: `Leftovers --stop <text>` stops the first leftover whose title contains it.
@@ -130,7 +131,7 @@ final class Monitor: NSObject, ObservableObject {
         let battery = SystemInfo.battery()
         let procs = ProcScan.allProcesses()
         let sessions = SessionIndex.load()
-        let classifier = Classifier()
+        let classifier = Classifier(watchedFolders: Classifier.savedFolders() + sessions.workFolders)
         let g = classifier.group(procs)
 
         var samples: [pid_t: Sample] = [:]
@@ -248,8 +249,10 @@ final class Monitor: NSObject, ObservableObject {
         // The Claude app's own processes tell whether a session is working and whether Claude's simulator
         // panel is showing (used by the rules; not shown as a row).
         let sessionPids = Set(g.sessions.map(\.pid))
+        var renderCPU = 0.0, renderWatts = 0.0
         for p in g.claudeApp + g.sessions {
             let r = rate(p)
+            if p.name.contains("Renderer") { renderCPU += r.cpu; renderWatts += r.watts }
             // Claude's simulator panel streams frames while it is showing a simulator.
             if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
             // A session is working when its Claude Code process is busy...
@@ -258,6 +261,74 @@ final class Monitor: NSObject, ObservableObject {
         // ...or it was active in the last 10 minutes.
         if sessions.sessions.values.contains(where: { now.timeIntervalSince($0.lastActivityAt) < 600 }) {
             facts.claudeWorking = true
+        }
+
+        // #7 The Claude app's windows drawing hard (usually an animated preview or artifact left open).
+        if renderCPU >= 10 {
+            items.append(Item(id: "claude-preview", kind: .claudePreview, title: "Claude app windows",
+                              detail: "", command: "Claude Helper (Renderer)", pids: g.claudeApp.filter { $0.name.contains("Renderer") }.map(\.pid),
+                              started: now, cpuPercent: renderCPU, watts: renderWatts, batteryPerHour: perHour(renderWatts),
+                              keepKey: "claude-preview", noun: "Claude app"))
+        }
+
+        // #8 / #9 Spotlight and cloud-sync apps chewing on Claude's build folders. System processes are
+        // measured with ps; folders are only looked at while one of them is busy.
+        let cpuByName = Extras.systemCPU()
+        func cpu(of names: Set<String>) -> Double {
+            cpuByName.filter { names.contains($0.name) }.map(\.cpu).reduce(0, +)
+        }
+        let claudeFolders = classifier.watchedFolders
+        let spotlightCPU = cpu(of: Extras.spotlightProcesses)
+        if spotlightCPU >= 20 {
+            let folders = Extras.recentBuildFolders(in: claudeFolders, within: 3 * 3600, now: now)
+            if !folders.isEmpty {
+                items.append(Item(id: "spotlight", kind: .spotlight, title: "Spotlight indexing",
+                                  detail: "", command: "mds_stores / mdworker", pids: [], started: now,
+                                  cpuPercent: spotlightCPU, keepKey: "spotlight", noun: "Spotlight", apps: folders))
+            }
+        }
+        let synced = Extras.syncedFolders(claudeFolders)
+        let syncCPU = cpu(of: Extras.syncProcesses)
+        if !synced.isEmpty, syncCPU >= 15 {
+            let folders = Extras.recentBuildFolders(in: synced, within: 3 * 3600, now: now)
+            if !folders.isEmpty {
+                items.append(Item(id: "cloud-sync", kind: .cloudSync, title: "Cloud sync",
+                                  detail: "", command: "iCloud / OneDrive / Dropbox", pids: [], started: now,
+                                  cpuPercent: syncCPU, keepKey: "cloud-sync", noun: "Cloud sync", apps: folders))
+            }
+        }
+
+        // #12 Android emulators (the emulator runs as a qemu process).
+        for p in procs where p.name.hasPrefix("qemu-system") {
+            var fam: [ProcRecord] = [], stack = [p]
+            while let q = stack.popLast() { fam.append(q); stack += children[q.pid] ?? [] }
+            let st = stats(fam)
+            let avd = p.args.firstIndex(of: "-avd").flatMap { $0 + 1 < p.args.count ? p.args[$0 + 1] : nil }
+                ?? p.args.first { $0.hasPrefix("@") }.map { String($0.dropFirst()) } ?? "Android device"
+            items.append(Item(id: "android-\(p.pid)-\(Int(p.start.timeIntervalSince1970))", kind: .android,
+                              title: avd.replacingOccurrences(of: "_", with: " "), detail: "", command: p.commandLine,
+                              pids: fam.map(\.pid), started: p.start, cpuPercent: st.cpu, watts: st.watts,
+                              batteryPerHour: perHour(st.watts), averageCpu: st.average,
+                              startTimes: fam.map { $0.start.timeIntervalSince1970 },
+                              keepKey: "android-\(avd)-\(Int(p.start.timeIntervalSince1970))", noun: "Android emulator"))
+        }
+
+        // #14 Chrome tabs showing Claude's test pages. Chrome's page processes' total use is attached, since
+        // Chrome doesn't say which tab uses what.
+        if procs.contains(where: { $0.name == "Google Chrome" && $0.path.hasPrefix("/Applications/") }) {
+            let renderers = procs.filter { $0.name.hasPrefix("Google Chrome Helper (Renderer)") }
+            var chromeCPU = 0.0
+            for r in renderers { chromeCPU += rate(r).cpu }
+            let servers = items.filter { !$0.ports.isEmpty }
+            for tab in Extras.chromeTabs(claudeFolders: claudeFolders) {
+                let port = URL(string: tab.url)?.port.map(UInt16.init)
+                let server = servers.first { s in port.map { s.ports.contains($0) } ?? false }
+                let fileProject = URL(string: tab.url).flatMap { $0.isFileURL ? classifier.project(for: $0.path) : nil }
+                items.append(Item(id: "tab-" + tab.url, kind: .browserTab, title: tab.title, detail: "", command: tab.url,
+                                  project: server?.project ?? fileProject, pids: [], started: now,
+                                  cpuPercent: chromeCPU, keepKey: "tab-" + tab.url, noun: "Chrome tab",
+                                  apps: server == nil && !tab.url.hasPrefix("file:") ? ["server stopped"] : []))
+            }
         }
 
         previous = samples

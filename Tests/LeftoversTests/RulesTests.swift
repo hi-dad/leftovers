@@ -15,9 +15,9 @@ private func item(_ kind: ItemKind, id: String = "x", cpu: Double = 0, perHour: 
 }
 
 private func ctx(battery: Bool = false, simUsedAgo: TimeInterval? = nil, claudeIdle: TimeInterval = 0,
-                 kept: Set<String> = [], snoozed: [String: Date] = [:]) -> RuleContext {
+                 kept: Set<String> = []) -> RuleContext {
     RuleContext(now: now, onBattery: battery, lastSimulatorUse: simUsedAgo.map { now.addingTimeInterval(-$0) },
-                lastClaudeWorking: now.addingTimeInterval(-claudeIdle), kept: kept, snoozedUntil: snoozed)
+                lastClaudeWorking: now.addingTimeInterval(-claudeIdle), kept: kept)
 }
 
 private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil) -> Track {
@@ -102,12 +102,10 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(v.message.contains("Keep awake on battery"))
     }
 
-    @Test func keepAndSnooze() {
+    @Test func keep() {
         let i = item(.leftover, cpu: 250, perHour: 8, lastOutputAgo: 47 * hour)
         let t = heavyTrack(for: 48 * hour)
         #expect(Rules.judge(i, track: t, ctx: ctx(kept: ["key-x"])).tag == "Kept")
-        #expect(Rules.judge(i, track: t, ctx: ctx(snoozed: ["x": now.addingTimeInterval(600)])).tag == "Snoozed")
-        #expect(Rules.judge(i, track: t, ctx: ctx(snoozed: ["x": now.addingTimeInterval(-1)])).level == .alarm)
     }
 }
 
@@ -136,5 +134,71 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Describe.reason(i) == "Not used in 30 h")
         i.verdict.tag = "Idle 2 h"
         #expect(Describe.reason(i) == "Nobody has opened it in 2 h")
+    }
+}
+
+@Suite struct NewChecks {
+    @Test func androidLikeSimulators() {
+        let emu = item(.android, perHour: 5, startedAgo: 5 * hour)
+        let t = Track(firstSeen: now)
+        #expect(Rules.judge(emu, track: t, ctx: ctx()).level == .warn)
+        var c = ctx(); c.lastAndroidUse = now.addingTimeInterval(-10 * min)
+        #expect(Rules.judge(emu, track: t, ctx: c).level == .none)
+    }
+
+    @Test func claudePreviewOnlyWhenNothingIsWorking() {
+        let busy = item(.claudePreview, cpu: 40, perHour: 3)
+        let t = heavyTrack(for: 20 * min)
+        #expect(Rules.judge(busy, track: t, ctx: ctx(claudeIdle: 1 * min)).level == .none)   // Claude is replying
+        #expect(Rules.judge(busy, track: t, ctx: ctx(claudeIdle: 30 * min)).level == .warn)
+        #expect(Rules.judge(busy, track: heavyTrack(for: 2 * min), ctx: ctx(claudeIdle: 30 * min)).level == .none)
+    }
+
+    @Test func spotlightNeedsToLast() {
+        var s = item(.spotlight, cpu: 60, perHour: nil); s.apps = ["~/Desktop/claude/zom-zom/node_modules"]
+        #expect(Rules.judge(s, track: heavyTrack(for: 5 * min), ctx: ctx()).level == .none)
+        let v = Rules.judge(s, track: heavyTrack(for: 20 * min), ctx: ctx())
+        #expect(v.level == .warn)
+        #expect(v.message.contains("zom-zom/node_modules"))
+    }
+
+    @Test func tabsOnlyWhenChromeIsIdle() {
+        let tab = item(.browserTab, cpu: 30, perHour: nil)
+        let longOpen = Track(firstSeen: now.addingTimeInterval(-2 * hour), heavySince: now.addingTimeInterval(-hour))
+        var used = ctx(); used.lastChromeUse = now.addingTimeInterval(-5 * min)
+        #expect(Rules.judge(tab, track: longOpen, ctx: used).level == .none)
+        var idle = ctx(); idle.lastChromeUse = now.addingTimeInterval(-2 * hour)
+        #expect(Rules.judge(tab, track: longOpen, ctx: idle).level == .warn)
+        let quiet = item(.browserTab, cpu: 1, perHour: nil)
+        #expect(Rules.judge(quiet, track: Track(firstSeen: now.addingTimeInterval(-2 * hour)), ctx: idle).tag == "Open tab")
+    }
+
+    @Test func pagesThatCount() {
+        let folders = ["/Users/test/Desktop/claude"]
+        #expect(Extras.isClaudePage("http://localhost:5173/", folders: folders))
+        #expect(Extras.isClaudePage("http://127.0.0.1:8000/index.html", folders: folders))
+        #expect(Extras.isClaudePage("file:///Users/test/Desktop/claude/morse-waldo/index.html", folders: folders))
+        #expect(!Extras.isClaudePage("https://github.com/", folders: folders))
+        #expect(!Extras.isClaudePage("file:///Users/test/Documents/a.html", folders: folders))
+    }
+
+    @Test func everyRowYouCanActOnSaysWhatHappens() {
+        for kind in ItemKind.allCases where kind != .sessionJob {
+            var i = item(kind); i.noun = kind == .android ? "Android emulator" : "Python script"
+            #expect(Describe.advice(i) != nil, "\(kind)")
+        }
+        var site = item(.leftover, ports: [8000]); site.noun = "Test website"
+        #expect(Describe.advice(site)?.text.hasPrefix("Only the test website stops") == true)
+    }
+}
+
+@Suite struct Folders {
+    @Test func workFoldersSkipHomeAndNested() {
+        var idx = SessionIndex()
+        let home = NSHomeDirectory()
+        for (id, cwd) in [("a", home + "/Desktop/claude"), ("b", home + "/Desktop/claude/zom-zom"), ("c", home), ("d", home + "/Desktop/Other")] {
+            idx.sessions[id] = SessionInfo(cliSessionId: id, title: id, cwd: cwd, createdAt: now, lastActivityAt: now, archived: false)
+        }
+        #expect(idx.workFolders == [home + "/Desktop/Other", home + "/Desktop/claude"])
     }
 }

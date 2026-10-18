@@ -27,8 +27,9 @@ struct RuleContext {
     var onBattery: Bool
     var lastSimulatorUse: Date?   // Simulator app in front, or Claude's simulator panel streaming
     var lastClaudeWorking: Date   // a Claude Code session doing something
+    var lastAndroidUse: Date? = nil  // the Android emulator window in front
+    var lastChromeUse: Date? = nil   // Chrome in front
     var kept: Set<String>
-    var snoozedUntil: [String: Date]
     var speedup: Double = 1
 }
 
@@ -60,7 +61,6 @@ enum Rules {
         let min = 60.0, hour = 3600.0
 
         if ctx.kept.contains(i.keepKey) { return Verdict(level: .info, tag: "Kept") }
-        if let until = ctx.snoozedUntil[i.id], until > now { return Verdict(level: .info, tag: "Snoozed") }
 
         let cost = i.batteryPerHour.map { $0 >= 1 ? String(format: " It's using about %.0f%% of your battery an hour.", $0) : "" } ?? ""
         let heavyFor = track.heavySince.map { now.timeIntervalSince($0) } ?? 0
@@ -101,6 +101,41 @@ enum Rules {
                                message: "\(i.title) has been running for \(Describe.duration(now.timeIntervalSince(i.started))) and hasn't been used in \(Describe.duration(unused)).\(cost)")
             }
             return Verdict(level: .none, tag: "")
+
+        case .android:
+            let unused = now.timeIntervalSince(max(i.started, ctx.lastAndroidUse ?? .distantPast))
+            if unused >= 2 * hour * scale {
+                return Verdict(level: .warn, tag: "Unused \(Describe.duration(unused))",
+                               message: "\(i.title) has been running for \(Describe.duration(now.timeIntervalSince(i.started))) and hasn't been used in \(Describe.duration(unused)).\(cost)")
+            }
+            return Verdict(level: .none, tag: "")
+
+        case .claudePreview:
+            // Drawing while Claude works is normal (it's showing the reply). Busy with nothing happening is not.
+            let idle = now.timeIntervalSince(ctx.lastClaudeWorking)
+            if isHeavy(i), heavyFor >= 10 * min * scale, idle >= 5 * min {
+                return Verdict(level: .warn, tag: "Busy preview",
+                               message: "The Claude app has been busy drawing for \(Describe.duration(heavyFor)) while no chat is working. Usually an animated preview or artifact is still open.\(cost)")
+            }
+            return Verdict(level: .none, tag: "")
+
+        case .spotlight, .cloudSync:
+            let who = i.kind == .spotlight ? "Spotlight has been indexing" : "Your cloud sync has been uploading"
+            if heavyFor >= 15 * min * scale {
+                return Verdict(level: .warn, tag: i.kind == .spotlight ? "Indexing" : "Syncing",
+                               message: "\(who) Claude's build files for \(Describe.duration(heavyFor)) (\(i.apps.prefix(2).joined(separator: ", ")))." )
+            }
+            return Verdict(level: .none, tag: "")
+
+        case .browserTab:
+            let open = now.timeIntervalSince(track.firstSeen)
+            let unused = now.timeIntervalSince(ctx.lastChromeUse ?? track.firstSeen)
+            guard open >= 30 * min * scale, unused >= 30 * min * scale else { return Verdict(level: .none, tag: "") }
+            if isHeavy(i), heavyFor >= 10 * min * scale {
+                return Verdict(level: .warn, tag: "Tab busy",
+                               message: "A Chrome tab with one of Claude's test pages has been open for \(Describe.duration(open)) and Chrome is busy, though you haven't used Chrome in \(Describe.duration(unused)).")
+            }
+            return Verdict(level: .info, tag: "Open tab")
 
         case .sleepHold:
             let held = now.timeIntervalSince(i.started)
