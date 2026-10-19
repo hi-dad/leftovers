@@ -82,6 +82,9 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         i.noun = "Video export"; i.project = "zom-zom"; i.verdict = v
         #expect(Describe.summary(i) == "Video export stuck in zom-zom")
         #expect(Describe.advice(i)! == ("Safe to stop", "it isn't making progress"))
+        // Not while that chat is replying: Claude may be waiting on the job.
+        var watched = i; watched.busy = true; watched.verdict = Verdict(level: .none, tag: "")
+        #expect(Rules.judge(watched, track: heavyTrack(for: 9 * hour), ctx: ctx()).level == .none)
         // A quiet process that's just waiting isn't wasting battery.
         let waiting = item(.sessionJob, cpu: 0, perHour: 0, startedAgo: 9 * hour, lastOutputAgo: 9 * hour)
         #expect(Rules.judge(waiting, track: Track(firstSeen: now), ctx: ctx()).level == .none)

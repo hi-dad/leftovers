@@ -131,7 +131,8 @@ enum Rules {
         case .appStarted, .sessionJob:
             // Started in the background by a chat that's still open: once Claude's reply ends, nothing shows it's
             // still going. Same as a stuck leftover, with a longer wait since the chat may come back to it.
-            if i.connections == 0, isHeavy(i), heavyFor >= hour * scale,
+            // Only once that chat has stopped replying: while Claude is working it may be waiting on this job.
+            if !i.busy, i.connections == 0, isHeavy(i), heavyFor >= hour * scale,
                let out = i.lastOutput, now.timeIntervalSince(out) >= hour * scale {
                 let from = i.session.map { " Its chat “\($0)” is still open." } ?? ""
                 return Verdict(level: .alarm, tag: "Looks stuck",

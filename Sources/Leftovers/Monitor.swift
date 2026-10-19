@@ -227,6 +227,8 @@ final class Monitor: NSObject, ObservableObject {
                             keepKey: "\(kind.rawValue)-\(root.pid)-\(Int(root.start.timeIntervalSince1970))",
                             noun: st.ports.isEmpty ? Describe.noun(for: main) : "Test website",
                             starter: main.pid != root.pid && root.name != main.name ? Describe.title(for: root) : nil)
+            // A chat's own job: note whether that chat is replying right now (its job is never flagged then).
+            if kind == .sessionJob { item.busy = helpers[root.ppid]?.busy ?? false }
             let age = Describe.duration(now.timeIntervalSince(root.start))
             switch kind {
             case .leftover:

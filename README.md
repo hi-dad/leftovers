@@ -50,7 +50,7 @@ It warns you only when something is both **unowned** (its Claude session has end
 | | When | Example |
 |---|---|---|
 | 🔴 | Working hard for 30+ min but its output files haven't changed for 30+ min | "ffmpeg looks stuck" |
-| 🔴 | A job a still-open chat started, working hard for 1+ h with no output change for 1+ h | "ffmpeg looks stuck" |
+| 🔴 | A job a still-open chat started, working hard for 1+ h with no output change for 1+ h, once that chat has stopped replying | "ffmpeg looks stuck" |
 | 🟠 | Still busy 10+ min after its session ended | "A leftover from Claude is still running" |
 | 🟠 | A simulator running 2+ h without being used | "iPhone 17 is running unused" |
 | ⚪ | A dev server nobody has connected to for 1+ h | shown in the menu only |
