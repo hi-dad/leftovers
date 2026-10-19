@@ -108,6 +108,18 @@ enum ProcScan {
         return cString(v.pvi_cdir.vip_path)
     }
 
+    /// One environment variable of a process (it follows argv in the KERN_PROCARGS2 block).
+    static func environmentValue(_ pid: pid_t, _ name: String) -> String? {
+        var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]
+        var size = 0
+        guard sysctl(&mib, 3, nil, &size, nil, 0) == 0, size > 4 else { return nil }
+        var buf = [UInt8](repeating: 0, count: size)
+        guard sysctl(&mib, 3, &buf, &size, nil, 0) == 0 else { return nil }
+        let strings = buf[4..<size].split(separator: 0).map { String(decoding: $0, as: UTF8.self) }
+        let prefix = name + "="
+        return strings.first { $0.hasPrefix(prefix) }.map { String($0.dropFirst(prefix.count)) }
+    }
+
     /// Command-line arguments (argv), read with sysctl KERN_PROCARGS2.
     private static func arguments(_ pid: pid_t) -> [String] {
         var mib: [Int32] = [CTL_KERN, KERN_PROCARGS2, pid]

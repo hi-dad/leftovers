@@ -36,11 +36,17 @@ cat > $APP/Contents/Info.plist <<PLIST
 </dict></plist>
 PLIST
 
-# Same local certificate as your other apps, so macOS remembers notification permission across rebuilds.
-if security find-certificate -c "Daniel Ryan Local Signing" >/dev/null 2>&1; then
-  codesign --force --sign "Daniel Ryan Local Signing" $APP
+# Signing: a stable certificate lets macOS remember Leftovers' permissions (Chrome, Desktop) across rebuilds.
+# Uses, in order: $SIGN_IDENTITY, the name in a local .signing-identity file (git-ignored, yours only),
+# your first valid code-signing certificate (e.g. Xcode's "Apple Development"), or ad-hoc signing.
+IDENTITY="${SIGN_IDENTITY:-}"
+[[ -z "$IDENTITY" && -f .signing-identity ]] && IDENTITY="$(head -1 .signing-identity)"
+[[ -z "$IDENTITY" ]] && IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/"/{print $2; exit}')"
+if [[ -n "$IDENTITY" ]] && codesign --force --sign "$IDENTITY" $APP 2>/dev/null; then
+  echo "Signed with: $IDENTITY"
 else
   codesign --force --sign - $APP
+  echo "Signed ad-hoc (no certificate found); macOS may ask for permissions again after each rebuild."
 fi
 
 pkill -x Leftovers || true

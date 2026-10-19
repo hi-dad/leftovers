@@ -38,7 +38,7 @@ Every row reads the same way:
 | **Chrome extension spinning** | A Chrome extension busy in the background for 10+ minutes (Claude in Chrome has had this bug). | Open Chrome extensions |
 
 
-Every row says what its button does ("If you stop it: only the test website stops…"), so you know nothing important breaks. Leftovers watches Claude's scratch folders and **every folder a Claude chat has worked in** automatically. You can add more in Settings.
+
 
 Claude keeping your Mac awake *while it works* is intended, so that isn't shown.
 
@@ -64,7 +64,7 @@ On battery, all waits are cut in half. Each problem is announced once, with **St
 
 - Fully offline. It reads the process list, battery info and the Claude app's session titles on your Mac. Nothing leaves the computer.
 - Permissions (standard macOS prompts): notifications; Chrome tab addresses (only while Chrome is open, for the tab check); Desktop folder dates (only when Spotlight or cloud sync is busy).
-- It only looks at processes that came from Claude, or that run inside Claude's scratch folders or your project folders (Settings → Project folders; default `~/Desktop/claude`). It never touches your normal apps.
+- It only looks at what Claude started. It finds Claude's chats by the program itself, wherever they run, and follows everything each chat starts. It **remembers** what each chat started, so a leftover is still recognised after the chat closes, in any folder. As a backup it also checks Claude's scratch folders and the folders Claude's own records say your chats worked in. There's nothing to set up, and it never touches your normal apps.
 - It's very light: about 0.02% of the battery per hour. It checks every minute on battery and every 3 minutes when plugged in.
 
 <img src="images/settings.png" width="400" alt="Settings: open at login, notifications, project folders, kept list">
@@ -75,6 +75,7 @@ Needs the Swift toolchain (Xcode or Command Line Tools); no Xcode project.
 
 ```bash
 ./build.sh      # builds Leftovers.app, installs it to /Applications and launches it
+                # signs with $SIGN_IDENTITY, a .signing-identity file, your first code-signing certificate, or ad-hoc
 swift test      # alarm-rule and classification tests
 ```
 

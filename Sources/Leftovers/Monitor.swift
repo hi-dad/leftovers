@@ -29,6 +29,17 @@ final class Monitor: NSObject, ObservableObject {
 
     private let queue = DispatchQueue(label: "leftovers.scan", qos: .utility)
     private var previous: [pid_t: Sample] = [:]
+    /// "pid-starttime" → name of the chat that started it (see compute). Kept on disk so a Leftovers restart
+    /// doesn't forget. Only touched on the scan queue.
+    private var remembered: [String: String] = {
+        guard let d = try? Data(contentsOf: Monitor.rememberedURL) else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: d)) ?? [:]
+    }()
+    private static let rememberedURL = statusURL.deletingLastPathComponent().appendingPathComponent("remembered.json")
+
+    private func saveRemembered() {
+        try? JSONEncoder().encode(remembered).write(to: Self.rememberedURL, options: .atomic)
+    }
     private var timer: Timer?
     private var scanning = false
 
@@ -133,8 +144,26 @@ final class Monitor: NSObject, ObservableObject {
         let battery = SystemInfo.battery()
         let procs = ProcScan.allProcesses()
         let sessions = SessionIndex.load()
-        let classifier = Classifier(watchedFolders: Classifier.savedFolders() + sessions.workFolders)
+        // Claude Code's settings folder: ~/.claude, unless Claude was told to keep it elsewhere (CLAUDE_CONFIG_DIR,
+        // read from a running Claude Code process so it matches whatever that person set up).
+        let probe = Classifier()
+        let configDir = procs.lazy.filter(probe.isClaudeCode)
+            .compactMap { ProcScan.environmentValue($0.pid, "CLAUDE_CONFIG_DIR") }.first ?? probe.configDir
+        let helpers = HelperInfo.load(from: configDir + "/sessions")
+        let classifier = Classifier(watchedFolders: sessions.workFolders, configDir: configDir,
+                                    remembered: Set(remembered.keys))
         let g = classifier.group(procs)
+
+        // Remember everything a chat (or the Claude app) starts, with the chat's name, so it's still recognised
+        // as Claude's after the chat closes, whatever folder it runs in. "" = started by the app, no chat name.
+        for fam in g.sessionJobs {
+            let chat = helpers[fam[0].ppid]?.name ?? ""
+            for p in fam { remembered[Classifier.key(p)] = chat }
+        }
+        for fam in g.appStarted { for p in fam where remembered[Classifier.key(p)] == nil { remembered[Classifier.key(p)] = "" } }
+        let alive = Set(procs.map(Classifier.key))
+        remembered = remembered.filter { alive.contains($0.key) }
+        saveRemembered()
 
         var samples: [pid_t: Sample] = [:]
         /// Current CPU % and watts of one process (lifetime average the first time it is seen).
@@ -177,9 +206,11 @@ final class Monitor: NSObject, ObservableObject {
                 title += " on port " + st.ports.map(String.init).joined(separator: ", ")
             }
             let match = sessions.match(fam)
+            let rememberedChat = fam.lazy.compactMap { self.remembered[Classifier.key($0)] }.first { !$0.isEmpty }
             var item = Item(id: "\(kind.rawValue)-\(root.pid)-\(Int(root.start.timeIntervalSince1970))",
                             kind: kind, title: title, detail: "", command: main.commandLine,
-                            session: match?.session.title, sessionGuessed: match?.guessed ?? false,
+                            session: match?.session.title ?? rememberedChat,
+                            sessionGuessed: match == nil ? false : match!.guessed,
                             project: classifier.project(for: root.cwd), folder: root.cwd.isEmpty ? nil : root.cwd, pids: fam.map(\.pid), started: root.start,
                             cpuPercent: st.cpu, watts: st.watts, batteryPerHour: perHour(st.watts),
                             ports: st.ports, connections: st.connections,
@@ -264,7 +295,6 @@ final class Monitor: NSObject, ObservableObject {
 
         // Chat helpers: the background program behind each Claude chat. Each one says whether its chat is
         // busy, so "Claude is working" comes from that, not from CPU (a stuck helper is busy but not working).
-        let helpers = HelperInfo.load()
         var helperItems: [Item] = []
         for p in g.sessions {
             var fam: [ProcRecord] = [], stack = [p]

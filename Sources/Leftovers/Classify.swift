@@ -17,17 +17,24 @@ struct Grouping {
 struct Classifier {
     var home: String
     /// Folders whose stray processes count as Claude's (where Claude builds things).
+    /// Folders Claude chats have worked in (read from Claude's own records, never set by hand). Only a backup
+    /// for recognising a leftover Leftovers never saw being started.
     var watchedFolders: [String]
+    /// Claude Code's settings folder (~/.claude unless Claude was told to keep it elsewhere).
+    var configDir: String
+    /// Processes Leftovers saw a Claude chat or the Claude app start ("pid-starttime"). After the chat closes
+    /// they're still known to be Claude's, whatever folder they run in.
+    var remembered: Set<String>
 
-    init(home: String = NSHomeDirectory(), watchedFolders: [String]? = nil) {
+    init(home: String = NSHomeDirectory(), watchedFolders: [String] = [], configDir: String? = nil,
+         remembered: Set<String> = []) {
         self.home = home
-        self.watchedFolders = watchedFolders ?? Self.savedFolders(home: home)
+        self.watchedFolders = watchedFolders
+        self.configDir = configDir ?? home + "/.claude"
+        self.remembered = remembered
     }
 
-    /// Folders chosen in Settings (default: ~/Desktop/claude, where Claude builds your projects).
-    static func savedFolders(home: String = NSHomeDirectory()) -> [String] {
-        (UserDefaults.standard.array(forKey: "watchedFolders") as? [String]) ?? [home + "/Desktop/claude"]
-    }
+    static func key(_ p: ProcRecord) -> String { "\(p.pid)-\(Int(p.start.timeIntervalSince1970))" }
 
     static let claudeAppBundle = "/Applications/Claude.app/"
     static let claudeAppMain = "/Applications/Claude.app/Contents/MacOS/Claude"
@@ -44,7 +51,7 @@ struct Classifier {
     func isClaudeish(_ p: ProcRecord) -> Bool {
         let places = [p.cwd, p.path] + p.args
         return places.contains { s in
-            s.contains("/tmp/claude-") || s.contains(home + "/.claude/")
+            s.contains("/tmp/claude-") || s.contains(configDir + "/")
                 || watchedFolders.contains { s == $0 || s.hasPrefix($0 + "/") }
         }
     }
@@ -104,7 +111,8 @@ struct Classifier {
 
         // 3. Orphans: handed to launchd after the session that started them ended.
         for p in procs.sorted(by: { $0.pid < $1.pid })
-        where p.ppid == 1 && !claimed.contains(p.pid) && !isAppOrSystem(p) && isClaudeish(p) {
+        where p.ppid == 1 && !claimed.contains(p.pid) && !isAppOrSystem(p)
+            && (remembered.contains(Self.key(p)) || isClaudeish(p)) {
             let fam = family(p.pid).filter { !claimed.contains($0.pid) }
             fam.forEach { claimed.insert($0.pid) }
             g.leftovers.append(fam)

@@ -7,7 +7,6 @@ struct SettingsView: View {
     @EnvironmentObject var m: Monitor
     @State private var openAtLogin = SMAppService.mainApp.status == .enabled
     @State private var notify = UserDefaults.standard.object(forKey: "notify") as? Bool ?? true
-    @State private var folders = Classifier.savedFolders()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -18,16 +17,6 @@ struct SettingsView: View {
                 }
             Toggle("Notify me about leftovers", isOn: $notify)
                 .onChange(of: notify) { _, on in UserDefaults.standard.set(on, forKey: "notify") }
-
-            section("Project folders",
-                    note: "Anything still running from these folders after its Claude chat ends counts as a leftover. Also watched automatically: Claude's scratch folders and every folder a Claude chat has worked in\(autoCount).") {
-                ForEach(folders, id: \.self) { f in
-                    row((f as NSString).abbreviatingWithTildeInPath, button: "Remove") {
-                        folders.removeAll { $0 == f }; save()
-                    }
-                }
-                Button("Add folder…", action: addFolder).buttonStyle(.borderless).font(.system(size: 13, weight: .medium))
-            }
 
             section("Kept running", note: "Things you chose to keep. Leftovers lists them but won't warn about them.") {
                 if m.kept.isEmpty {
@@ -60,25 +49,4 @@ struct SettingsView: View {
         }
     }
 
-    private var autoCount: String {
-        let n = SessionIndex.load().workFolders.count
-        return n > 0 ? " (\(n) right now)" : ""
-    }
-
-    private func save() {
-        UserDefaults.standard.set(folders, forKey: "watchedFolders")
-        m.scan()
-    }
-
-    private func addFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.prompt = "Watch Folder"
-        panel.level = .popUpMenu + 1
-        NSApp.activate(ignoringOtherApps: true)
-        if panel.runModal() == .OK, let url = panel.url, !folders.contains(url.path) {
-            folders.append(url.path); save()
-        }
-    }
 }

@@ -73,9 +73,7 @@ struct HelperInfo: Equatable {
     var statusSince: Date
     var fromApp: Bool   // started by the Claude app (vs. a terminal)
 
-    static let folder = NSHomeDirectory() + "/.claude/sessions"
-
-    static func load(from folder: String = folder) -> [pid_t: HelperInfo] {
+    static func load(from folder: String = NSHomeDirectory() + "/.claude/sessions") -> [pid_t: HelperInfo] {
         var out: [pid_t: HelperInfo] = [:]
         for f in (try? FileManager.default.contentsOfDirectory(atPath: folder)) ?? [] where f.hasSuffix(".json") {
             guard let data = FileManager.default.contents(atPath: folder + "/" + f),

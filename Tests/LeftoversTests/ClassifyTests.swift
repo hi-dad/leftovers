@@ -20,7 +20,8 @@ private let cli = proc(200, 101, "claude",
 private let scratch = "/private/tmp/claude-501/-Users-test-Desktop-claude/9c0150a1-8c11-4092-906e-06938d938a8d/scratchpad/ad"
 
 @Suite struct Grouping {
-    let c = Classifier(home: home)
+    // As if Claude's chat records said a chat had worked in ~/Desktop/claude (nothing is assumed by default).
+    let c = Classifier(home: home, watchedFolders: ["\(home)/Desktop/claude"])
 
     @Test func stuckVideoJobIsALeftover() {
         // Today's case: build.sh orphaned to launchd, ffmpeg under it, both in a session scratchpad.
@@ -70,6 +71,21 @@ private let scratch = "/private/tmp/claude-501/-Users-test-Desktop-claude/9c0150
                       args: ["Python", "-m", "http.server", "8000"], cwd: "\(home)/Desktop/claude/zom-zom")
         #expect(c.group([py]).leftovers.count == 1)
         #expect(Describe.title(for: py) == "Web server (Python)")
+    }
+
+    @Test func rememberedLeftoversAreCaughtInAnyFolder() {
+        // A dev server a chat started in a folder no chat record mentions; the chat has since closed.
+        let server = proc(900, 1, "node", args: ["node", "vite"], cwd: "/Volumes/Work/site")
+        let fresh = Classifier(home: home)
+        #expect(fresh.group([server]).leftovers.isEmpty)                         // never seen: not assumed
+        let remembers = Classifier(home: home, remembered: [Classifier.key(server)])
+        #expect(remembers.group([server]).leftovers.map { $0.map(\.pid) } == [[900]])  // seen under a chat: caught
+    }
+
+    @Test func movedClaudeSettingsFolder() {
+        let moved = Classifier(home: home, configDir: "/Users/test/dotfiles/claude")
+        let p = proc(901, 1, "bash", args: ["bash", "/Users/test/dotfiles/claude/hooks/x.sh"], cwd: "/")
+        #expect(moved.group([p]).leftovers.count == 1)
     }
 
     @Test func projectNames() {
