@@ -54,5 +54,13 @@ enum SystemInfo {
         }
     }
 
-
+    /// True when a process holds a "keep the screen on for video" request (how Chromium-based apps,
+    /// including the Claude app, signal that a video is playing).
+    static func isPlayingVideo(_ pid: pid_t) -> Bool {
+        var ref: Unmanaged<CFDictionary>?
+        guard IOPMCopyAssertionsByProcess(&ref) == kIOReturnSuccess,
+              let dict = ref?.takeRetainedValue() as? [AnyHashable: Any],
+              let list = dict.first(where: { ($0.key as? NSNumber)?.int32Value == pid })?.value as? [[String: Any]] else { return false }
+        return list.contains { (($0["AssertName"] as? String) ?? "").localizedCaseInsensitiveContains("video") }
+    }
 }

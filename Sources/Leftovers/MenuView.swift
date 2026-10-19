@@ -24,7 +24,7 @@ struct MenuView: View {
         m.items.filter { i in
             switch i.kind {
             case .leftover, .appStarted, .sessionJob, .simulator, .android: true
-            case .claudePreview, .spotlight, .cloudSync, .helperPileup, .chatHelper:
+            case .claudePreview, .claudePlayback, .spotlight, .cloudSync, .helperPileup, .chatHelper:
                 i.verdict.level >= .warn
             }
         }
@@ -154,7 +154,7 @@ struct ItemRow: View {
                 Image(systemName: icon)
                     .font(.system(size: 16))
                     .frame(width: 22)
-                    .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
+                    .foregroundStyle(item.verdict.level >= .info ? levelColor : Color.secondary)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Describe.summary(item))
                         .font(.system(size: 15, weight: .semibold))
@@ -162,7 +162,7 @@ struct ItemRow: View {
                         .fixedSize(horizontal: false, vertical: true)
                     Text(item.status)
                         .font(.system(size: 13))
-                        .foregroundStyle(item.verdict.level >= .warn ? levelColor : Color.secondary)
+                        .foregroundStyle(item.verdict.level >= .info ? levelColor : Color.secondary)
                 }
                 Spacer(minLength: 4)
                 if let cost = costText {
@@ -203,7 +203,7 @@ struct ItemRow: View {
             .disabled(stopping)
             if expanded { details.padding(.leading, 30) }
         }
-        .opacity(item.verdict.tag == "Kept" ? 0.55 : 1)
+        .opacity(item.verdict.tag == "Ignored" ? 0.55 : 1)
         .padding(.vertical, 10).padding(.horizontal, 10)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.05)))
     }
@@ -223,7 +223,7 @@ struct ItemRow: View {
         case .spotlight, .cloudSync:
             rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
             for (n, f) in item.apps.enumerated() { rows.append((n == 0 ? "Build folders" : " ", f)) }
-        case .claudePreview:
+        case .claudePreview, .claudePlayback:
             rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
         case .chatHelper:
             rows.append(("Chat", item.title))
@@ -274,7 +274,7 @@ struct ItemRow: View {
     private var levelColor: Color {
         switch item.verdict.level {
         case .alarm: .red
-        case .warn: .orange
+        case .warn, .info: .orange
         default: .secondary
         }
     }
@@ -291,16 +291,11 @@ struct ItemRow: View {
             if item.kind != .appStarted || item.verdict.level >= .info {
                 a.append((item.kind == .simulator ? "Shut down" : "Stop", stop))
             }
-            if m.kept[item.keepKey] != nil {
-                a.append(("Undo keep", { m.unkeep(item.keepKey) }))
-            } else if item.verdict.level >= .info {
-                a.append(("Keep", { m.keep(item) }))
-            }
+            if m.kept[item.keepKey] == nil, item.verdict.level >= .info { a.append(("Ignore", { m.keep(item) })) }
         case .android:
             a.append(("Shut down", stop))
-            if m.kept[item.keepKey] != nil { a.append(("Undo keep", { m.unkeep(item.keepKey) })) }
-            else if item.verdict.level >= .info { a.append(("Keep", { m.keep(item) })) }
-        case .claudePreview:
+            if m.kept[item.keepKey] == nil, item.verdict.level >= .info { a.append(("Ignore", { m.keep(item) })) }
+        case .claudePreview, .claudePlayback:
             a.append(("Open Claude", { m.openClaude() }))
         case .spotlight:
             a.append(("Open Spotlight settings", { m.openSpotlightSettings() }))

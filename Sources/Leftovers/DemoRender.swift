@@ -87,7 +87,7 @@ enum DemoRender {
                             project: "morse-waldo", ports: [5174], noun: "Test website")
             live.connections = 1
             var simInUse = sim; simInUse.verdict = Verdict(level: .none, tag: ""); simInUse.started = now.addingTimeInterval(-3600)
-            var keptLoop = loop; keptLoop.verdict = Verdict(level: .none, tag: "Kept"); keptLoop.keepKey = "kept-demo"
+            var keptLoop = loop; keptLoop.verdict = Verdict(level: .none, tag: "Ignored"); keptLoop.keepKey = "kept-demo"
             return ([site, live, simInUse, keptLoop], false)
         case "leftovers":
             return ([stuck, loop, site], true)
@@ -102,10 +102,13 @@ enum DemoRender {
             pile.memoryMB = 1650; pile.batteryPerHour = nil
             pile.apps = ["Snail House levels", "Project ideas", "Rectangle app deletion", "Cloudflare email domain",
                          "DesktopCatProject setup", "Scheduled actions", "Auto-approve for all projects", "Zom-Zom guns", "Pokémon maps"]
-            var preview = make(.claudePreview, "Claude app windows", hours: 0.67, perHour: 4, .warn, "Busy preview", noun: "Claude app")
+            var playback = make(.claudePlayback, "Claude app windows", hours: 0.5, perHour: 5, .warn, "Busy preview", noun: "Animation or artifact")
+            playback.cpuPercent = 55
+            playback.notes = ["Playing: animation or artifact", "Busiest part: a side panel or preview (51% CPU)", "Claude windows on screen: 1", "Claude in front: no (busy in the background)"]
+            var preview = make(.claudePreview, "Claude app busy", hours: 0.67, perHour: 4, .warn, "Busy preview", noun: "Claude app")
             preview.cpuPercent = 42
-            preview.notes = ["Busiest part: a side panel or preview (38% CPU)", "Claude windows on screen: 2", "Claude in front: no (busy in the background)"]
-            return name == "chats" ? ([pile], false) : ([chat, pile, preview], name == "claude")
+            preview.notes = ["Busiest part: the main Claude window (38% CPU)", "Claude windows on screen: 2", "Claude in front: no (busy in the background)"]
+            return name == "chats" ? ([pile], false) : ([chat, pile, playback, preview], name == "claude")
         case "system":
             var spot = make(.spotlight, "Spotlight indexing", hours: 0.33, perHour: 0, .warn, "Indexing", noun: "Spotlight")
             spot.apps = ["~/Desktop/claude/prayer-circle/node_modules", "~/Desktop/claude/snail-house/node_modules",

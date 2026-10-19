@@ -336,10 +336,17 @@ final class Monitor: NSObject, ObservableObject {
             notes.append("Claude windows on screen: \(windows)")
             let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.anthropic.claudefordesktop"
             notes.append("Claude in front: " + (front ? "yes" : "no (busy in the background)"))
-            items.append(Item(id: "claude-preview", kind: .claudePreview, title: "Claude app windows",
+            // Something playing (a video, a simulator stream, or a busy side panel/preview) vs. no clear reason.
+            let video = appPid.map(SystemInfo.isPlayingVideo) ?? false
+            let what: String? = video ? "Video" : facts.simPanelActive ? "Simulator screen"
+                : (busiest != nil && busiest?.pid != main) ? "Animation or artifact" : nil
+            if let what { notes.insert("Playing: " + what.lowercased(), at: 0) }
+            items.append(Item(id: what == nil ? "claude-preview" : "claude-playback",
+                              kind: what == nil ? .claudePreview : .claudePlayback, title: "Claude app windows",
                               detail: "", command: "Claude Helper (Renderer)", pids: renderers.map(\.pid),
                               started: now, cpuPercent: renderCPU, watts: renderWatts, batteryPerHour: perHour(renderWatts),
-                              keepKey: "claude-preview", noun: "Claude app", notes: notes))
+                              keepKey: what == nil ? "claude-preview" : "claude-playback",
+                              noun: what ?? "Claude app", notes: notes))
         }
 
         // #8 / #9 Spotlight and cloud-sync apps chewing on Claude's build folders. System processes are

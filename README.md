@@ -26,11 +26,12 @@ Every row reads the same way:
 
 | Section | What it means | Buttons |
 |---|---|---|
-| **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. | Stop · Keep |
-| **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Keep |
+| **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. | Stop · Ignore |
+| **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Ignore |
 | **Started by the Claude app** / **Running in a Claude session** | Dev/preview servers, with whether anyone is connected. | Open · Stop |
-| **Android emulators** | Treated like iPhone simulators. | Shut down · Keep |
-| **Claude app previews** | The Claude app drawing hard while no chat is working, usually an animated preview or artifact left open. | Open Claude |
+| **Android emulators** | Treated like iPhone simulators. | Shut down · Ignore |
+| **Animation, video or artifact playing in Claude** | A preview, artifact, video or the simulator panel keeps the Claude app busy while no chat is working. | Open Claude |
+| **Claude app busy (fallback)** | The Claude app busy with no clear reason, a known app bug; quitting and reopening fixes it. | Open Claude |
 | **Spotlight** | Spotlight busy indexing Claude's freshly made build folders (node_modules, .build…). | Open Spotlight settings |
 | **Cloud sync** | iCloud/OneDrive/Dropbox busy uploading Claude's build folders. | Show folder |
 | **Claude chat stuck in a loop** | A chat's helper program says it's idle but keeps the CPU busy (a known Claude Code bug). | Close |
@@ -53,9 +54,9 @@ It warns you only when something is both **unowned** (its Claude session has end
 | 🟠 | A simulator running 2+ h without being used | "iPhone 17 is running unused" |
 | ⚪ | A dev server nobody has connected to for 1+ h | shown in the menu only |
 
-On battery, all waits are cut in half. Each problem is announced once, with **Stop** and **Keep running** buttons.
+On battery, all waits are cut in half. Each problem is announced once, with **Stop** and **Ignore** buttons.
 
-**It never stops anything without a click.** Stop asks the process to quit, waits 5 seconds, then forces it if needed. It also stops the script that started it, so nothing starts again. **Keep** means *you're still using it right now*: it moves to **Running · in use** (greyed out) and stops warning until it ends. Next time it runs, Leftovers watches it again. For Spotlight and cloud sync, **Don't warn again** switches that check off for good.
+**It never stops anything without a click.** Stop asks the process to quit, waits 5 seconds, then forces it if needed. It also stops the script that started it, so nothing starts again. **Ignore** moves it to **Running · in use** (greyed out) and stops warning until that run ends; next time it runs, Leftovers watches it again. For Spotlight and cloud sync, **Don't warn again** switches that check off for good.
 
 **Settings → Watch for** lets you switch off any kind of check (say, Spotlight, if you'd rather keep it indexing); switched-off checks are never listed or notified.
 

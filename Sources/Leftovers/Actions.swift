@@ -46,11 +46,6 @@ extension Monitor {
         scan()
     }
 
-    func unkeep(_ key: String) {
-        kept[key] = nil
-        rejudge()
-    }
-
     func openSpotlightSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Spotlight-Settings.extension") {
             NSWorkspace.shared.open(url)

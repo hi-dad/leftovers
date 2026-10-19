@@ -97,13 +97,13 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         let i = item(.leftover, cpu: 250, perHour: 8, lastOutputAgo: 47 * hour)
         let v = Rules.judge(i, track: heavyTrack(for: 48 * hour), ctx: ctx(kept: ["key-x"]))
         #expect(v.level == .none)   // listed under In use, no warning
-        #expect(Rules.status(i, track: heavyTrack(for: 48 * hour), ctx: ctx(kept: ["key-x"])).hasSuffix("you're using it"))
+        #expect(Rules.status(i, track: heavyTrack(for: 48 * hour), ctx: ctx(kept: ["key-x"])).hasSuffix("ignored"))
     }
 
     @Test func keep() {
         let i = item(.leftover, cpu: 250, perHour: 8, lastOutputAgo: 47 * hour)
         let t = heavyTrack(for: 48 * hour)
-        #expect(Rules.judge(i, track: t, ctx: ctx(kept: ["key-x"])).tag == "Kept")
+        #expect(Rules.judge(i, track: t, ctx: ctx(kept: ["key-x"])).tag == "Ignored")
     }
 }
 
@@ -283,5 +283,25 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Check.of(item(.spotlight)) == .spotlight)
         // Every kind of row maps to a check (websites are told apart by their port), and every check is used.
         #expect(Set(ItemKind.allCases.map { Check.of(item($0)) } + [Check.of(site)]) == Set(Check.allCases))
+    }
+}
+
+@Suite struct ClaudePlayback {
+    func playing(_ what: String) -> Item {
+        var i = item(.claudePlayback, cpu: 40, perHour: 4); i.noun = what; return i
+    }
+
+    @Test func namesWhatIsPlaying() {
+        #expect(Describe.summary(playing("Video")) == "Video playing in Claude")
+        #expect(Describe.summary(playing("Simulator screen")) == "Simulator screen streaming in Claude")
+        #expect(Describe.summary(playing("Animation or artifact")) == "Animation or artifact playing in Claude")
+        #expect(Describe.advice(playing("Simulator screen"))?.text.contains("simulator itself keeps running") == true)
+        var fallback = item(.claudePreview); fallback.noun = "Claude app"
+        #expect(Describe.advice(fallback)?.text.hasPrefix("quit Claude") == true)
+    }
+
+    @Test func sameTimingAsTheFallback() {
+        #expect(Rules.judge(playing("Video"), track: heavyTrack(for: 20 * min), ctx: ctx(claudeIdle: 30 * min)).level == .warn)
+        #expect(Rules.judge(playing("Video"), track: heavyTrack(for: 20 * min), ctx: ctx(claudeIdle: 1 * min)).level == .none)
     }
 }

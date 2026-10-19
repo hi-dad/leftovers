@@ -16,7 +16,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         c.requestAuthorization(options: [.alert, .sound]) { _, _ in }
         let stop = UNNotificationAction(identifier: "stop", title: "Stop it", options: [.destructive])
         let shut = UNNotificationAction(identifier: "stop", title: "Shut down", options: [.destructive])
-        let keep = UNNotificationAction(identifier: "keep", title: "Keep running")
+        let keep = UNNotificationAction(identifier: "keep", title: "Ignore")
         let claude = UNNotificationAction(identifier: "claude", title: "Open Claude", options: [.foreground])
         let review = UNNotificationAction(identifier: "review", title: "Review", options: [.foreground])
         let spotlight = UNNotificationAction(identifier: "spotlight", title: "Open Spotlight settings", options: [.foreground])
@@ -51,7 +51,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             let category: String
             switch i.kind {
             case .simulator, .android: category = "simulator"
-            case .claudePreview: category = "sleep"
+            case .claudePreview, .claudePlayback: category = "sleep"
             case .spotlight: category = "spotlight"
             case .cloudSync, .helperPileup: category = "review"
             default: category = "leftover"

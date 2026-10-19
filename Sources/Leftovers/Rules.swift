@@ -86,12 +86,12 @@ enum Rules {
             parts = i.busy ? ["Working now"] : [busy, "last message " + (ago(i.idleSince) ?? "a while ago")]
         case .helperPileup:
             parts = ["\(i.apps.count) chats loaded", String(format: "%.1f GB of memory", (i.memoryMB ?? 0) / 1024)]
-        case .claudePreview:
+        case .claudePreview, .claudePlayback:
             parts = [busy, "last Claude work " + (ago(ctx.lastClaudeWorking) ?? "a while ago")]
         case .spotlight, .cloudSync:
             parts = [busy, "\(i.apps.count) build folder\(i.apps.count == 1 ? "" : "s") changed"]
         }
-        if ctx.kept.contains(i.keepKey) { parts.append("you're using it") }
+        if ctx.kept.contains(i.keepKey) { parts.append("ignored") }
         return parts.joined(separator: " · ")
     }
 
@@ -102,8 +102,8 @@ enum Rules {
         let now = ctx.now
         let min = 60.0, hour = 3600.0
 
-        // Kept = "I'm still using it": listed under In use (greyed), no warnings, until it stops.
-        if ctx.kept.contains(i.keepKey) { return Verdict(level: .none, tag: "Kept") }
+        // Ignored: listed under In use (greyed), no warnings, until this run ends.
+        if ctx.kept.contains(i.keepKey) { return Verdict(level: .none, tag: "Ignored") }
 
         let cost = i.batteryPerHour.map { $0 >= 1 ? String(format: " It's using about %.0f%% of your battery an hour.", $0) : "" } ?? ""
         let heavyFor = track.heavySince.map { now.timeIntervalSince($0) } ?? 0
@@ -151,7 +151,7 @@ enum Rules {
             }
             return unused >= 30 * min * scale ? Verdict(level: .info, tag: "Inactive") : Verdict(level: .none, tag: "")
 
-        case .claudePreview:
+        case .claudePreview, .claudePlayback:
             // Drawing while Claude works is normal (it's showing the reply). Busy with nothing happening is not.
             let idle = now.timeIntervalSince(ctx.lastClaudeWorking)
             if isHeavy(i), heavyFor >= 10 * min * scale, idle >= 5 * min {

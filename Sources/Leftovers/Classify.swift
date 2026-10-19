@@ -182,6 +182,12 @@ enum Describe {
             return i.noun + (i.apps.isEmpty ? " running" : " running " + ListFormatter.localizedString(byJoining: i.apps))
         case .android:
             return "Android emulator running (\(i.title))"
+        case .claudePlayback:
+            switch i.noun {
+            case "Video": return "Video playing in Claude"
+            case "Simulator screen": return "Simulator screen streaming in Claude"
+            default: return "Animation or artifact playing in Claude"
+            }
         case .claudePreview:
             return "Claude app busy while no chat is working"
         case .spotlight:
@@ -211,6 +217,7 @@ enum Describe {
         case .simulator: return "iphone"
         case .android: return "smartphone"
         case .chatHelper, .helperPileup: return "bubble.left.and.bubble.right"
+        case .claudePlayback: return "play.rectangle"
         case .claudePreview: return "macwindow"
         case .spotlight: return "magnifyingglass"
         case .cloudSync: return "icloud.and.arrow.up"
@@ -236,8 +243,13 @@ enum Describe {
             return ("Safe to close", "the chat stays and reopens normally")
         case .helperPileup:
             return ("Fix", "quit Claude (⌘Q) and reopen it; your chats are kept")
+        case .claudePlayback:
+            if i.noun == "Simulator screen" {
+                return ("Fix", "close the simulator panel in Claude; the simulator itself keeps running")
+            }
+            return ("Fix", "close the preview, artifact or browser tab that's playing; your chats aren't affected")
         case .claudePreview:
-            return ("Fix", "close previews or panels you're not using; if none are open, quit and reopen Claude")
+            return ("Fix", "quit Claude (⌘Q) and reopen it; your chats are kept")
         case .spotlight:
             // The projects folder is two levels above a build folder (~/Desktop/claude/<project>/node_modules).
             let root = i.apps.first.map { (($0 as NSString).deletingLastPathComponent as NSString).deletingLastPathComponent } ?? "your Claude projects folder"

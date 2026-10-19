@@ -34,7 +34,8 @@ enum ItemKind: String, Codable, CaseIterable {
     case sessionJob    // started by a Claude session that is running right now
     case appStarted    // started by the Claude app itself (preview servers and the like)
     case simulator     // a booted iPhone/iPad simulator
-    case claudePreview // the Claude app's windows busy drawing (an animated preview or artifact)
+    case claudePlayback // an animation, video, artifact or simulator stream playing in the Claude app
+    case claudePreview // the Claude app busy with no clear reason (fallback; a known app bug)
     case spotlight     // Spotlight busy indexing Claude's build folders
     case cloudSync     // iCloud/OneDrive/Dropbox busy uploading Claude's build folders
     case android       // an Android emulator
@@ -44,7 +45,7 @@ enum ItemKind: String, Codable, CaseIterable {
 
 /// The kinds of thing Leftovers watches for; each can be switched off in Settings.
 enum Check: String, CaseIterable, Codable {
-    case leftovers, websites, stuckChats, tooManyChats, devices, claudeApp, spotlight, cloudSync
+    case leftovers, websites, stuckChats, tooManyChats, devices, claudePlayback, claudeApp, spotlight, cloudSync
 
     var label: String {
         switch self {
@@ -53,6 +54,7 @@ enum Check: String, CaseIterable, Codable {
         case .stuckChats: "Claude chats stuck in a loop"
         case .tooManyChats: "Too many Claude chats loaded"
         case .devices: "iPhone simulators and Android emulators"
+        case .claudePlayback: "Animations, videos and artifacts playing in Claude"
         case .claudeApp: "Claude app busy while no chat is working"
         case .spotlight: "Spotlight re-indexing Claude's builds"
         case .cloudSync: "Cloud sync re-uploading Claude's builds"
@@ -65,6 +67,7 @@ enum Check: String, CaseIterable, Codable {
         case .simulator, .android: return .devices
         case .chatHelper: return .stuckChats
         case .helperPileup: return .tooManyChats
+        case .claudePlayback: return .claudePlayback
         case .claudePreview: return .claudeApp
         case .spotlight: return .spotlight
         case .cloudSync: return .cloudSync
@@ -93,7 +96,7 @@ struct Item: Identifiable, Codable, Equatable {
     var lastOutput: Date?         // newest change to a file it is writing
     var averageCpu: Double = 0    // CPU % averaged over each process's whole life
     var startTimes: [Double] = [] // start time of each pid, so Stop never hits a reused pid
-    var keepKey = ""              // what "Keep" applies to: this one run (process + start time, device + boot)
+    var keepKey = ""              // what "Ignore" applies to: this one run (process + start time, device + boot)
     var verdict = Verdict(level: .none, tag: "")
     var noun = ""                 // plain name of what it is ("Python script", "Video export")
     var starter: String?          // the script that started it, when that's a different program
