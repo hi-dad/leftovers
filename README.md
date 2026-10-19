@@ -14,7 +14,7 @@ Claude Code often starts background work: builds, video encodes, dev servers, iP
 
 ## What it shows
 
-At the top there's always a clear answer: a green **All clear**, or **"2 things need a look"** in orange or red. Problems come first, then two quieter lists: **Running · inactive** (nothing is using it; stop it before it wastes battery) and **Running · in use**.
+At the top there's always one clear answer: **"2 things need a look"** (orange or red) when something is wasting battery, else **"1 thing sitting idle"** (orange) when Claude left something running that you could stop, else a green **All clear**. Problems come first, then two quieter lists: **Running · inactive** (nothing is using it; stop it before it wastes battery) and **Running · in use**.
 
 Each row's icon shows what kind of thing it is (↻ stuck in a loop, terminal = script, hammer = build, globe = test website, phone = simulator, and so on), and its color shows how serious it is.
 

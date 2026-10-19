@@ -18,7 +18,7 @@ struct SettingsView: View {
             Toggle("Notify me about leftovers", isOn: $notify)
                 .onChange(of: notify) { _, on in UserDefaults.standard.set(on, forKey: "notify") }
 
-            section("Watch for", note: "Switch off anything you don't want to hear about. It won't be listed or notified.") {
+            section("Watch for", note: "") {
                 ForEach(Check.allCases, id: \.self) { check in
                     Toggle(check.label, isOn: Binding(
                         get: { !m.offChecks.contains(check) },
@@ -41,7 +41,9 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 5) {
             Text(title.uppercased()).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
             content()
-            Text(note).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if !note.isEmpty {
+                Text(note).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 

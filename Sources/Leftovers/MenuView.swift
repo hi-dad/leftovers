@@ -53,7 +53,7 @@ struct MenuView: View {
     private var list: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                StatusBanner(attention: shown.filter { $0.verdict.level >= .warn })
+                StatusBanner(rows: shown)
                 let problems = sorted.filter { $0.verdict.level >= .warn }
                 let inactive = sorted.filter { $0.verdict.level == .info }
                 let inUse = sorted.filter { $0.verdict.level == .none }
@@ -94,11 +94,12 @@ struct MenuView: View {
             Spacer()
             if ui.showSettings {
                 Button("Done") { ui.showSettings = false }
+                Button("Quit") { NSApp.terminate(nil) }
             } else {
                 Button("Check now") { m.scan() }
+                Button("Quit") { NSApp.terminate(nil) }
                 Button { ui.showSettings = true } label: { Image(systemName: "gearshape") }.help("Settings")
             }
-            Button("Quit") { NSApp.terminate(nil) }
         }
         .buttonStyle(.borderless)
         .font(.system(size: 13))
@@ -106,20 +107,22 @@ struct MenuView: View {
     }
 }
 
-/// The answer to "is anything wasting my battery?", always at the top.
+/// The answer to "did Claude leave anything running?", always at the top. One state at a time: problems
+/// (orange/red), else idle things (orange), else all clear (green).
 struct StatusBanner: View {
-    let attention: [Item]
+    let rows: [Item]
+
+    private var problems: [Item] { rows.filter { $0.verdict.level >= .warn } }
+    private var idle: [Item] { rows.filter { $0.verdict.level == .info } }
 
     var body: some View {
-        let ok = attention.isEmpty
-        let color: Color = ok ? .green : attention.contains { $0.verdict.level == .alarm } ? .red : .orange
+        let (icon, color, title, subtitle) = content
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+            Image(systemName: icon)
                 .font(.system(size: 24))
                 .foregroundStyle(color)
             VStack(alignment: .leading, spacing: 2) {
-                Text(ok ? "All clear" : attention.count == 1 ? "1 thing needs a look" : "\(attention.count) things need a look")
-                    .font(.system(size: 16, weight: .semibold))
+                Text(title).font(.system(size: 16, weight: .semibold))
                 Text(subtitle).font(.system(size: 13)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -129,8 +132,22 @@ struct StatusBanner: View {
         .background(RoundedRectangle(cornerRadius: 10).fill(color.opacity(0.15)))
     }
 
-    private var subtitle: String {
-        attention.isEmpty ? "Nothing from Claude is wasting battery." : "Something from Claude is wasting battery."
+    private func count(_ n: Int, _ one: String, _ many: String) -> String { n == 1 ? "1 \(one)" : "\(n) \(many)" }
+
+    private var content: (String, Color, String, String) {
+        if !problems.isEmpty {
+            let red = problems.contains { $0.verdict.level == .alarm }
+            return ("exclamationmark.circle.fill", red ? .red : .orange,
+                    count(problems.count, "thing needs a look", "things need a look"),
+                    "Claude left something running that's wasting battery.")
+        }
+        if !idle.isEmpty {
+            return ("pause.circle.fill", .orange,
+                    count(idle.count, "thing sitting idle", "things sitting idle"),
+                    "Claude left \(idle.count == 1 ? "this" : "these") running. Stop \(idle.count == 1 ? "it" : "them") when you're done.")
+        }
+        return ("checkmark.circle.fill", .green, "All clear",
+                rows.isEmpty ? "Claude hasn't left anything running." : "Everything Claude started is in use.")
     }
 }
 
