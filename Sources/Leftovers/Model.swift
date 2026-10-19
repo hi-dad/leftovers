@@ -34,7 +34,6 @@ enum ItemKind: String, Codable, CaseIterable {
     case sessionJob    // started by a Claude session that is running right now
     case appStarted    // started by the Claude app itself (preview servers and the like)
     case simulator     // a booted iPhone/iPad simulator
-    case sleepHold     // something keeping the Mac from sleeping
     case claudePreview // the Claude app's windows busy drawing (an animated preview or artifact)
     case spotlight     // Spotlight busy indexing Claude's build folders
     case cloudSync     // iCloud/OneDrive/Dropbox busy uploading Claude's build folders
@@ -43,6 +42,40 @@ enum ItemKind: String, Codable, CaseIterable {
     case chatHelper    // the background program behind one Claude chat
     case helperPileup  // far more chat helpers than chats you use (a known Claude app bug)
     case chromeExtension // a Chrome extension stuck working in the background
+}
+
+/// The kinds of thing Leftovers watches for; each can be switched off in Settings.
+enum Check: String, CaseIterable, Codable {
+    case leftovers, websites, stuckChats, tooManyChats, devices, chromeTabs, chromeExtensions, claudeApp, spotlight, cloudSync
+
+    var label: String {
+        switch self {
+        case .leftovers: "Scripts and jobs left running"
+        case .websites: "Test websites"
+        case .stuckChats: "Claude chats stuck in a loop"
+        case .tooManyChats: "Too many Claude chats loaded"
+        case .devices: "iPhone simulators and Android emulators"
+        case .chromeTabs: "Chrome tabs left on test pages"
+        case .chromeExtensions: "Chrome extensions stuck in a loop"
+        case .claudeApp: "Claude app busy while no chat is working"
+        case .spotlight: "Spotlight re-indexing Claude's builds"
+        case .cloudSync: "Cloud sync re-uploading Claude's builds"
+        }
+    }
+
+    static func of(_ i: Item) -> Check {
+        switch i.kind {
+        case .leftover, .appStarted, .sessionJob: return i.ports.isEmpty && i.noun != "Test website" ? .leftovers : .websites
+        case .simulator, .android: return .devices
+        case .chatHelper: return .stuckChats
+        case .helperPileup: return .tooManyChats
+        case .browserTab: return .chromeTabs
+        case .chromeExtension: return .chromeExtensions
+        case .claudePreview: return .claudeApp
+        case .spotlight: return .spotlight
+        case .cloudSync: return .cloudSync
+        }
+    }
 }
 
 /// One row in the menu: a process family, a simulator, or a sleep hold.

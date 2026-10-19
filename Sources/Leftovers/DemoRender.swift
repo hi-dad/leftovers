@@ -103,13 +103,10 @@ enum DemoRender {
             pile.memoryMB = 1650; pile.batteryPerHour = nil
             pile.apps = ["Snail House levels", "Project ideas", "Rectangle app deletion", "Cloudflare email domain",
                          "DesktopCatProject setup", "Scheduled actions", "Auto-approve for all projects", "Zom-Zom guns", "Pokémon maps"]
-            var hold = make(.sleepHold, "The Claude app is stopping your Mac from sleeping", hours: 55, perHour: 0,
-                            .alarm, "No Claude work for 3 h")
-            hold.batteryPerHour = nil
             var preview = make(.claudePreview, "Claude app windows", hours: 0.67, perHour: 4, .warn, "Busy preview", noun: "Claude app")
             preview.cpuPercent = 42
             preview.notes = ["Busiest part: a side panel or preview (38% CPU)", "Claude windows on screen: 2", "Claude in front: no (busy in the background)"]
-            return name == "chats" ? ([pile], false) : ([hold, chat, pile, preview], name == "claude")
+            return name == "chats" ? ([pile], false) : ([chat, pile, preview], name == "claude")
         case "system":
             var spot = make(.spotlight, "Spotlight indexing", hours: 0.33, perHour: 0, .warn, "Indexing", noun: "Spotlight")
             spot.apps = ["~/Desktop/claude/prayer-circle/node_modules", "~/Desktop/claude/snail-house/node_modules",

@@ -180,8 +180,6 @@ enum Describe {
         switch i.kind {
         case .simulator:
             return i.noun + (i.apps.isEmpty ? " running" : " running " + ListFormatter.localizedString(byJoining: i.apps))
-        case .sleepHold:
-            return "Claude keeping your Mac awake for no reason"
         case .android:
             return "Android emulator running (\(i.title))"
         case .claudePreview:
@@ -217,7 +215,6 @@ enum Describe {
         case .simulator: return "iphone"
         case .android: return "smartphone"
         case .browserTab: return "safari"
-        case .sleepHold: return "moon.zzz"
         case .chatHelper, .helperPileup: return "bubble.left.and.bubble.right"
         case .claudePreview: return "macwindow"
         case .spotlight: return "magnifyingglass"
@@ -245,8 +242,6 @@ enum Describe {
             return ("Safe to close", "nothing else is affected")
         case .chatHelper:
             return ("Safe to close", "the chat stays and reopens normally")
-        case .sleepHold:
-            return ("Fix", "in Claude, Settings → Claude Code → turn off “Keep awake on battery”")
         case .helperPileup:
             return ("Fix", "quit Claude (⌘Q) and reopen it; your chats are kept")
         case .claudePreview:

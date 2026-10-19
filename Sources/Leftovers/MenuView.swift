@@ -25,7 +25,7 @@ struct MenuView: View {
             switch i.kind {
             case .leftover, .appStarted, .sessionJob, .simulator, .android: true
             case .browserTab: i.verdict.level >= .info
-            case .sleepHold, .claudePreview, .spotlight, .cloudSync, .helperPileup, .chromeExtension, .chatHelper:
+            case .claudePreview, .spotlight, .cloudSync, .helperPileup, .chromeExtension, .chatHelper:
                 i.verdict.level >= .warn
             }
         }
@@ -240,9 +240,6 @@ struct ItemRow: View {
             rows.append(("Address", item.command))
             if let p = item.project { rows.append(("Project", p)) }
             rows.append(("Chrome pages", String(format: "%.0f%% CPU in total", item.cpuPercent)))
-        case .sleepHold:
-            rows.append(("Held by", item.title.replacingOccurrences(of: " is stopping your Mac from sleeping", with: "").replacingOccurrences(of: " is keeping your screen on", with: "")))
-            rows.append(("Since", Describe.duration(now.timeIntervalSince(item.started)) + " ago"))
         default:
             rows.append(("Program", item.title))
             if let s = item.starter { rows.append(("Started by", s)) }
@@ -259,7 +256,7 @@ struct ItemRow: View {
             let parts = note.split(separator: ":", maxSplits: 1).map { $0.trimmingCharacters(in: .whitespaces) }
             if parts.count == 2 { rows.append((parts[0], parts[1])) }
         }
-        if let b = item.batteryPerHour, item.kind != .sleepHold {
+        if let b = item.batteryPerHour {
             rows.append(("Battery", String(format: "~%.1f%% an hour (%.0f%% CPU)", b, item.cpuPercent)))
         }
         return VStack(alignment: .leading, spacing: 3) {
@@ -277,9 +274,6 @@ struct ItemRow: View {
                     .lineLimit(4)
                     .textSelection(.enabled)
                     .padding(.top, 2)
-                if item.folder != nil {
-                    Button("Show folder") { m.showFolder(item) }.buttonStyle(.borderless).padding(.top, 2)
-                }
             }
         }
         .font(.system(size: 13))
@@ -317,7 +311,7 @@ struct ItemRow: View {
         case .browserTab:
             a.append(("Close tab", { stopping = true; m.closeTab(item) }))
             if m.kept[item.keepKey] == nil { a.append(("Keep", { m.keep(item) })) }
-        case .sleepHold, .claudePreview:
+        case .claudePreview:
             a.append(("Open Claude", { m.openClaude() }))
         case .spotlight:
             a.append(("Open Spotlight settings", { m.openSpotlightSettings() }))
@@ -336,7 +330,7 @@ struct ItemRow: View {
     }
 
     private var costText: String? {
-        guard let b = item.batteryPerHour, item.kind != .sleepHold else { return nil }
+        guard let b = item.batteryPerHour else { return nil }
         if b < 0.5 { return "<1%/h" }
         return String(format: "%.0f%%/h", b)
     }

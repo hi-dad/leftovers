@@ -71,10 +71,6 @@ extension Monitor {
         NSWorkspace.shared.open(url)
     }
 
-    func showFolder(_ i: Item) {
-        guard let f = i.folder else { return }
-        NSWorkspace.shared.open(URL(fileURLWithPath: f, isDirectory: true))
-    }
 
     func openClaude() {
         NSWorkspace.shared.openApplication(at: URL(fileURLWithPath: "/Applications/Claude.app"),

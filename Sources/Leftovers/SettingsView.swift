@@ -18,6 +18,18 @@ struct SettingsView: View {
             Toggle("Notify me about leftovers", isOn: $notify)
                 .onChange(of: notify) { _, on in UserDefaults.standard.set(on, forKey: "notify") }
 
+            section("Watch for", note: "Switch off anything you don't want to hear about. It won't be listed or notified.") {
+                ForEach(Check.allCases, id: \.self) { check in
+                    Toggle(check.label, isOn: Binding(
+                        get: { !m.offChecks.contains(check) },
+                        set: { on in
+                            if on { m.offChecks.remove(check) } else { m.offChecks.insert(check) }
+                            m.scan()
+                        }))
+                    .toggleStyle(.checkbox)
+                }
+            }
+
             section("Kept running", note: "Things you chose to keep. Leftovers lists them but won't warn about them.") {
                 if m.kept.isEmpty {
                     Text("Nothing yet").font(.system(size: 13)).foregroundStyle(.secondary)

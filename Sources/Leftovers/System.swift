@@ -54,27 +54,5 @@ enum SystemInfo {
         }
     }
 
-    struct SleepHold { var pid: pid_t; var type: String; var name: String; var since: Date }
 
-    static let sleepBlockingTypes: Set<String> = [
-        "NoIdleSleepAssertion", "PreventUserIdleSystemSleep", "PreventSystemSleep",
-        "NoDisplaySleepAssertion", "PreventUserIdleDisplaySleep",
-    ]
-
-    static func sleepHolds() -> [SleepHold] {
-        var ref: Unmanaged<CFDictionary>?
-        guard IOPMCopyAssertionsByProcess(&ref) == kIOReturnSuccess,
-              let dict = ref?.takeRetainedValue() as? [AnyHashable: Any] else { return [] }
-        var out: [SleepHold] = []
-        for (k, v) in dict {
-            guard let pid = (k as? NSNumber)?.int32Value, let list = v as? [[String: Any]] else { continue }
-            for a in list {
-                let type = (a["AssertType"] as? String) ?? ""
-                guard sleepBlockingTypes.contains(type) else { continue }
-                out.append(SleepHold(pid: pid, type: type, name: (a["AssertName"] as? String) ?? "",
-                                     since: (a["AssertStartWhen"] as? Date) ?? Date()))
-            }
-        }
-        return out
-    }
 }

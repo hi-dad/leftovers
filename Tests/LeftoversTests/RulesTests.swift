@@ -92,15 +92,6 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.judge(item(.simulator, startedAgo: 20 * min), track: t, ctx: ctx()).level == .none)
     }
 
-    @Test func claudeSleepHold() {
-        let hold = item(.sleepHold, perHour: nil, startedAgo: 55 * hour)
-        let t = Track(firstSeen: now)
-        #expect(Rules.judge(hold, track: t, ctx: ctx(battery: true, claudeIdle: 5 * min)).level == .none)   // working
-        #expect(Rules.judge(hold, track: t, ctx: ctx(battery: false, claudeIdle: 3 * hour)).level == .none) // plugged in
-        let v = Rules.judge(hold, track: t, ctx: ctx(battery: true, claudeIdle: 3 * hour))
-        #expect(v.level == .alarm)
-        #expect(v.message.contains("Keep awake on battery"))
-    }
 
     @Test func keep() {
         let i = item(.leftover, cpu: 250, perHour: 8, lastOutputAgo: 47 * hour)
@@ -269,8 +260,6 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         chat.busy = true
         #expect(Rules.status(chat, track: heavyTrack(for: 20 * min), ctx: ctx()) == "Working now")
 
-        let hold = item(.sleepHold, startedAgo: 55 * hour)
-        #expect(Rules.status(hold, track: Track(firstSeen: now), ctx: ctx(claudeIdle: 3 * hour)) == "Awake 2 days · last Claude work 3 h ago")
 
         var spot = item(.spotlight); spot.apps = ["a", "b", "c"]
         #expect(Rules.status(spot, track: heavyTrack(for: 20 * min), ctx: ctx()) == "Busy 20 min · 3 build folders changed")
@@ -297,5 +286,17 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Describe.icon(item(.simulator)) == "iphone")
         var chat = item(.chatHelper); chat.verdict = Verdict(level: .warn, tag: "Stuck")
         #expect(Describe.icon(chat) == "arrow.triangle.2.circlepath")
+    }
+}
+
+@Suite struct Checks {
+    @Test func everyRowBelongsToACheckYouCanSwitchOff() {
+        var site = item(.leftover, ports: [8000]); site.noun = "Test website"
+        #expect(Check.of(site) == .websites)
+        var script = item(.leftover); script.noun = "Python script"
+        #expect(Check.of(script) == .leftovers)
+        #expect(Check.of(item(.android)) == .devices)
+        #expect(Check.of(item(.spotlight)) == .spotlight)
+        #expect(Set(ItemKind.allCases.map { Check.of(item($0)) }).count >= 9)
     }
 }

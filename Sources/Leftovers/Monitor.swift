@@ -18,12 +18,17 @@ final class Monitor: NSObject, ObservableObject {
     var lastAndroidUse: Date?
     var lastChromeUse: Date?
     var lastClaudeWorking = SessionIndex.load().sessions.values.map(\.lastActivityAt).max() ?? Date()
+    /// Checks switched off in Settings: their rows are never shown or notified.
+    @Published var offChecks: Set<Check> {
+        didSet { UserDefaults.standard.set(offChecks.map(\.rawValue), forKey: "offChecks") }
+    }
     @Published var kept: [String: String] {   // keepKey → label shown in Settings
         didSet { UserDefaults.standard.set(kept, forKey: "kept") }
     }
 
     override init() {
         kept = (UserDefaults.standard.dictionary(forKey: "kept") as? [String: String]) ?? [:]
+        offChecks = Set(((UserDefaults.standard.array(forKey: "offChecks") as? [String]) ?? []).compactMap(Check.init(rawValue:)))
         super.init()
     }
 
@@ -112,7 +117,7 @@ final class Monitor: NSObject, ObservableObject {
                               lastChromeUse: lastChromeUse, kept: Set(kept.keys),
                               speedup: max(1, UserDefaults.standard.double(forKey: "ruleSpeedup")))
         var newTracks: [String: Track] = [:]
-        items = raw.map { item in
+        items = raw.filter { !offChecks.contains(Check.of($0)) }.map { item in
             var i = item
             let t = Rules.updateTrack(tracks[i.id], item: i, now: now)
             newTracks[i.id] = t
@@ -263,20 +268,6 @@ final class Monitor: NSObject, ObservableObject {
                               batteryPerHour: perHour(st.watts), averageCpu: st.average,
                               keepKey: "sim-\(sim.udid)-\(Int(started.timeIntervalSince1970))",
                               noun: sim.name.contains("iPad") ? "iPad simulator" : "iPhone simulator", apps: apps))
-        }
-
-        // Sleep holds taken by Claude or by anything Claude started.
-        let byPid = Dictionary(procs.map { ($0.pid, $0) }, uniquingKeysWith: { a, _ in a })
-        let claudePids = Set((g.claudeApp + g.sessions + (g.leftovers + g.sessionJobs + g.appStarted).flatMap { $0 }).map(\.pid))
-        let holds = Dictionary(grouping: SystemInfo.sleepHolds().filter { claudePids.contains($0.pid) }, by: \.pid)
-        for (pid, list) in holds {
-            let since = list.map(\.since).min() ?? now
-            let who = byPid[pid].map { classifier.isClaudeApp($0) ? "The Claude app" : Describe.title(for: $0) } ?? "Claude"
-            let what = list.contains { $0.type.contains("Display") } ? "keeping your screen on" : "stopping your Mac from sleeping"
-            items.append(Item(id: "sleep-\(pid)", kind: .sleepHold, title: "\(who) is \(what)",
-                              detail: "For \(Describe.duration(now.timeIntervalSince(since)))",
-                              command: list.map { "\($0.type): \($0.name)" }.joined(separator: "; "),
-                              pids: [pid], started: since, keepKey: "sleep-\(who)"))
         }
 
         // The Claude app's own processes tell whether a session is working and whether Claude's simulator

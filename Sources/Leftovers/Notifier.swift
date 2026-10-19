@@ -54,7 +54,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             let category: String
             switch i.kind {
             case .simulator, .android: category = "simulator"
-            case .sleepHold, .claudePreview: category = "sleep"
+            case .claudePreview: category = "sleep"
             case .browserTab: category = "tab"
             case .spotlight: category = "spotlight"
             case .cloudSync, .helperPileup, .chromeExtension: category = "review"

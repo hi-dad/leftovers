@@ -8,7 +8,7 @@ A tiny Mac menu-bar app that spots things Claude left running and draining your 
 
 ## Why
 
-Claude Code often starts background work: builds, video encodes, dev servers, iPhone simulators. When a session ends, some of that work can keep running with nothing watching it. Leftovers was written after a video encode had been stuck for **two days** at full power, two simulators had been running for over a day, and the Claude app had been stopping the Mac from sleeping for 55 hours. Nothing had warned about any of it.
+Claude Code often starts background work: builds, video encodes, dev servers, iPhone simulators. When a session ends, some of that work can keep running with nothing watching it. Leftovers was written after a video encode had been stuck for **two days** at full power and two simulators had been running for over a day. Nothing had warned about any of it.
 
 ## What it shows
 
@@ -25,7 +25,6 @@ Every row reads the same way:
 | Section | What it means | Buttons |
 |---|---|---|
 | **Left behind** | Its Claude session is gone, but the process is still running. Shows which session left it. | Stop · Keep |
-| **Keeping your Mac awake** | Only when it's a problem: on battery, while Claude isn't working. | Open Claude |
 | **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Keep |
 | **Started by the Claude app** / **Running in a Claude session** | Dev/preview servers, with whether anyone is connected. | Open · Stop |
 | **Android emulators** | Treated like iPhone simulators. | Shut down · Keep |
@@ -40,7 +39,6 @@ Every row reads the same way:
 
 
 
-Claude keeping your Mac awake *while it works* is intended, so that isn't shown.
 
 Every row shows its **battery cost** as a share of your battery per hour (e.g. `8%/h`), worked out from the energy macOS measures for each process.
 
@@ -51,7 +49,6 @@ It warns you only when something is both **unowned** (its Claude session has end
 | | When | Example |
 |---|---|---|
 | 🔴 | Working hard for 30+ min but its output files haven't changed for 30+ min | "ffmpeg looks stuck" |
-| 🔴 | Claude has kept the Mac awake 2+ h on battery, though no session has worked for 30 min | "Claude is keeping your Mac awake" |
 | 🟠 | Still busy 10+ min after its session ended | "A leftover from Claude is still running" |
 | 🟠 | A simulator running 2+ h without being used | "iPhone 17 is running unused" |
 | ⚪ | A dev server nobody has connected to for 1+ h | shown in the menu only |
@@ -59,6 +56,8 @@ It warns you only when something is both **unowned** (its Claude session has end
 On battery, all waits are cut in half. Each problem is announced once, with **Stop**, **Keep running** and **Remind me in an hour** buttons. When you unplug, you get one summary of anything still running.
 
 **It never stops anything without a click.** Stop asks the process to quit, waits 5 seconds, then forces it if needed. It also stops the script that started it, so nothing starts again. **Keep** is remembered for that project and command.
+
+**Settings → Watch for** lets you switch off any kind of check (say, Spotlight, if you'd rather keep it indexing); switched-off checks are never listed or notified.
 
 ## Privacy & permissions
 
