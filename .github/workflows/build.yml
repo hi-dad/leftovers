@@ -1,0 +1,58 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: write # to publish a release when main changes
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Run tests
+        run: swift test
+
+      - name: Build Leftovers.dmg
+        run: ./build.sh dist
+
+      - name: Verify the download
+        run: |
+          hdiutil verify dist/Leftovers.dmg
+          mount="$(hdiutil attach -nobrowse -readonly dist/Leftovers.dmg | awk -F'\t' '/Volumes/{print $NF}')"
+          app="$mount/Leftovers.app"
+          test -x "$app/Contents/MacOS/Leftovers"
+          plutil -lint "$app/Contents/Info.plist"
+          codesign --verify --verbose "$app"
+          lipo "$app/Contents/MacOS/Leftovers" -verify_arch arm64 x86_64
+          test -f "$mount/How to install.txt"
+          hdiutil detach "$mount"
+
+      - name: Smoke test (one scan runs and prints its results)
+        run: |
+          swift build -c release
+          "$(swift build -c release --show-bin-path)/Leftovers" --once | python3 -c "import json,sys; d=json.load(sys.stdin); print('scan ok:', len(d['items']), 'items')"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Leftovers
+          path: dist/Leftovers.dmg
+
+      # Every update to main becomes the new download behind the README's Download link.
+      - name: Publish release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(grep -A1 CFBundleShortVersionString build.sh | grep -o '[0-9][0-9.]*' | head -1)"
+          gh release create "build-$GITHUB_RUN_NUMBER" dist/Leftovers.dmg \
+            --target "$GITHUB_SHA" --latest \
+            --title "Leftovers $version (build $GITHUB_RUN_NUMBER)" --generate-notes

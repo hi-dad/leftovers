@@ -2,6 +2,7 @@
 # Builds Leftovers.app, installs it to /Applications and relaunches it.
 # Needs only the Swift toolchain; no Xcode project.
 #   ./build.sh          build + install + relaunch
+#   ./build.sh dist     build dist/Leftovers.dmg to share (doesn't install); GitHub builds this on every push
 #   swift test          run the tests
 set -e
 cd "$(dirname "$0")"
@@ -46,6 +47,18 @@ if [[ -n "$IDENTITY" ]] && codesign --force --sign "$IDENTITY" $APP 2>/dev/null;
 else
   codesign --force --sign - $APP
   echo "Signed ad-hoc (no certificate found); macOS may ask for permissions again after each rebuild."
+fi
+
+# ./build.sh dist: a disk image to share (the app + an Applications shortcut + install steps), no install.
+if [[ "$1" == "dist" ]]; then
+  rm -rf dist && mkdir -p dist/stage
+  mv $APP dist/stage/
+  ln -s /Applications dist/stage/Applications
+  cp "How to install.txt" dist/stage/
+  hdiutil create -volname "Leftovers" -srcfolder dist/stage -ov -format UDZO dist/Leftovers.dmg >/dev/null
+  rm -rf dist/stage
+  echo "Made dist/Leftovers.dmg"
+  exit 0
 fi
 
 pkill -x Leftovers || true
