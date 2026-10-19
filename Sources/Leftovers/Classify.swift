@@ -194,8 +194,6 @@ enum Describe {
             return i.verdict.tag == "Stuck" ? "Claude chat stuck in a loop: “\(i.title)”" : "“\(i.title)”"
         case .helperPileup:
             return "Too many Claude chats loaded (\(i.apps.count))"
-        case .chromeExtension:
-            return "Chrome extension busy in the background"
         case .appStarted, .sessionJob:
             return i.ports.isEmpty ? i.noun + place : "Test website" + (i.project.map { " for \($0)" } ?? "")
         case .leftover:
@@ -210,7 +208,7 @@ enum Describe {
 
     /// Category icon (SF Symbols): anything stuck in a loop shares one icon; otherwise it shows the kind of thing.
     static func icon(_ i: Item) -> String {
-        if ["Looks stuck", "Stuck", "Spinning"].contains(i.verdict.tag) { return "arrow.triangle.2.circlepath" }
+        if ["Looks stuck", "Stuck"].contains(i.verdict.tag) { return "arrow.triangle.2.circlepath" }
         switch i.kind {
         case .simulator: return "iphone"
         case .android: return "smartphone"
@@ -219,7 +217,6 @@ enum Describe {
         case .claudePreview: return "macwindow"
         case .spotlight: return "magnifyingglass"
         case .cloudSync: return "icloud.and.arrow.up"
-        case .chromeExtension: return "puzzlepiece.extension"
         case .leftover, .appStarted, .sessionJob: break
         }
         if !i.ports.isEmpty || i.noun == "Test website" { return "globe" }
@@ -252,8 +249,6 @@ enum Describe {
             return ("Fix", "add \(root) to Spotlight's Search Privacy list")
         case .cloudSync:
             return ("Fix", "move Claude's projects out of the synced folder, e.g. to ~/Developer")
-        case .chromeExtension:
-            return ("Fix", "find it in Chrome's Task Manager, then turn it off and on at chrome://extensions")
         case .sessionJob:
             return nil
         case .leftover, .appStarted:

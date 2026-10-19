@@ -388,7 +388,7 @@ final class Monitor: NSObject, ObservableObject {
         // (LEFTOVERS_NO_CHROME=1 skips this when testing from Terminal, so macOS doesn't ask Terminal for Chrome access.)
         if ProcessInfo.processInfo.environment["LEFTOVERS_NO_CHROME"] == nil,
            procs.contains(where: { $0.name == "Google Chrome" && $0.path.hasPrefix("/Applications/") }) {
-            // Page processes only (extension processes are checked on their own below).
+            // Page processes only (not extensions).
             let renderers = procs.filter { $0.path.contains("Google Chrome") && $0.name.contains("Renderer")
                 && !$0.args.contains("--extension-process") }
             var chromeCPU = 0.0
@@ -403,17 +403,6 @@ final class Monitor: NSObject, ObservableObject {
                                   cpuPercent: chromeCPU, keepKey: "tab-" + tab.url, noun: "Chrome tab",
                                   apps: server == nil && !tab.url.hasPrefix("file:") ? ["server stopped"] : []))
             }
-        }
-
-        // Chrome extensions stuck working in the background (Claude in Chrome has had this bug). Chrome
-        // doesn't say which extension a process belongs to, so the advice points to Chrome's Task Manager.
-        for p in procs where p.path.contains("Google Chrome") && p.args.contains("--extension-process") {
-            let r = rate(p)
-            guard r.cpu >= 10 else { continue }
-            items.append(Item(id: "ext-\(p.pid)-\(Int(p.start.timeIntervalSince1970))", kind: .chromeExtension,
-                              title: "Chrome extension", detail: "", command: "", pids: [p.pid], started: p.start,
-                              cpuPercent: r.cpu, watts: r.watts, batteryPerHour: perHour(r.watts),
-                              averageCpu: r.average, keepKey: "chrome-extension", noun: "Chrome extension"))
         }
 
         previous = samples

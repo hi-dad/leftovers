@@ -114,8 +114,7 @@ enum DemoRender {
             spot.batteryPerHour = nil
             var sync = make(.cloudSync, "Cloud sync", hours: 0.5, perHour: 0, .warn, "Syncing", noun: "Cloud sync")
             sync.apps = ["~/Documents/apps/our-sims/node_modules"]; sync.batteryPerHour = nil
-            let ext = make(.chromeExtension, "Chrome extension", hours: 2, perHour: 4, .warn, "Spinning", noun: "Chrome extension")
-            return ([spot, sync, ext], false)
+            return ([spot, sync], false)
         default:
             return ([stuck, loop, sim, site], false)
         }

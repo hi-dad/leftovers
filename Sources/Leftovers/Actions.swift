@@ -52,10 +52,6 @@ extension Monitor {
         }
     }
 
-    func openChromeExtensions() {
-        _ = Extras.run("/usr/bin/open", ["-a", "Google Chrome", "chrome://extensions"])
-    }
-
     func openSpotlightSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Spotlight-Settings.extension") {
             NSWorkspace.shared.open(url)

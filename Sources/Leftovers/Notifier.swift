@@ -57,7 +57,7 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             case .claudePreview: category = "sleep"
             case .browserTab: category = "tab"
             case .spotlight: category = "spotlight"
-            case .cloudSync, .helperPileup, .chromeExtension: category = "review"
+            case .cloudSync, .helperPileup: category = "review"
             default: category = "leftover"
             }
             post(id: i.id, title: title, body: i.verdict.message, category: category, quiet: quiet)

@@ -25,7 +25,7 @@ struct MenuView: View {
             switch i.kind {
             case .leftover, .appStarted, .sessionJob, .simulator, .android: true
             case .browserTab: i.verdict.level >= .info
-            case .claudePreview, .spotlight, .cloudSync, .helperPileup, .chromeExtension, .chatHelper:
+            case .claudePreview, .spotlight, .cloudSync, .helperPileup, .chatHelper:
                 i.verdict.level >= .warn
             }
         }
@@ -232,9 +232,6 @@ struct ItemRow: View {
         case .helperPileup:
             if let mb = item.memoryMB { rows.append(("Memory", String(format: "%.1f GB in total", mb / 1024))) }
             for (n, chat) in item.apps.enumerated() { rows.append((n == 0 ? "Chats loaded" : " ", chat)) }
-        case .chromeExtension:
-            rows.append(("Busy", String(format: "%.0f%% CPU", item.cpuPercent)))
-            rows.append(("Running for", Describe.duration(now.timeIntervalSince(item.started))))
         case .browserTab:
             rows.append(("Page", item.title))
             rows.append(("Address", item.command))
@@ -319,8 +316,6 @@ struct ItemRow: View {
             if !item.busy { a.append(("Close", stop)) }
         case .helperPileup:
             break
-        case .chromeExtension:
-            a.append(("Open Chrome extensions", { m.openChromeExtensions() }))
         case .cloudSync:
             if let f = item.apps.first { a.append(("Show folder", { m.reveal(f) })) }
         case .sessionJob:

@@ -41,12 +41,11 @@ enum ItemKind: String, Codable, CaseIterable {
     case browserTab    // a Chrome tab showing one of Claude's test pages
     case chatHelper    // the background program behind one Claude chat
     case helperPileup  // far more chat helpers than chats you use (a known Claude app bug)
-    case chromeExtension // a Chrome extension stuck working in the background
 }
 
 /// The kinds of thing Leftovers watches for; each can be switched off in Settings.
 enum Check: String, CaseIterable, Codable {
-    case leftovers, websites, stuckChats, tooManyChats, devices, chromeTabs, chromeExtensions, claudeApp, spotlight, cloudSync
+    case leftovers, websites, stuckChats, tooManyChats, devices, chromeTabs, claudeApp, spotlight, cloudSync
 
     var label: String {
         switch self {
@@ -56,7 +55,6 @@ enum Check: String, CaseIterable, Codable {
         case .tooManyChats: "Too many Claude chats loaded"
         case .devices: "iPhone simulators and Android emulators"
         case .chromeTabs: "Chrome tabs left on test pages"
-        case .chromeExtensions: "Chrome extensions stuck in a loop"
         case .claudeApp: "Claude app busy while no chat is working"
         case .spotlight: "Spotlight re-indexing Claude's builds"
         case .cloudSync: "Cloud sync re-uploading Claude's builds"
@@ -70,7 +68,6 @@ enum Check: String, CaseIterable, Codable {
         case .chatHelper: return .stuckChats
         case .helperPileup: return .tooManyChats
         case .browserTab: return .chromeTabs
-        case .chromeExtension: return .chromeExtensions
         case .claudePreview: return .claudeApp
         case .spotlight: return .spotlight
         case .cloudSync: return .cloudSync

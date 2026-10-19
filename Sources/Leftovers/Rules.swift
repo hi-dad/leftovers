@@ -93,8 +93,6 @@ enum Rules {
             parts = [busy, "last Claude work " + (ago(ctx.lastClaudeWorking) ?? "a while ago")]
         case .spotlight, .cloudSync:
             parts = [busy, "\(i.apps.count) build folder\(i.apps.count == 1 ? "" : "s") changed"]
-        case .chromeExtension:
-            parts = [busy, ago(ctx.lastChromeUse).map { "Chrome last used " + $0 } ?? "Chrome not used since"]
         }
         if ctx.kept.contains(i.keepKey) { parts.append("kept") }
         return parts.joined(separator: " · ")
@@ -197,12 +195,6 @@ enum Rules {
             return Verdict(level: .warn, tag: "Pile-up",
                            message: "The Claude app has \(i.title) loaded. They hold about \(String(format: "%.1f", (i.memoryMB ?? 0) / 1024)) GB of memory. Quitting and reopening Claude clears them.")
 
-        case .chromeExtension:
-            if isHeavy(i), heavyFor >= 10 * min * scale {
-                return Verdict(level: .warn, tag: "Spinning",
-                               message: "A Chrome extension has been busy in the background for \(Describe.duration(heavyFor)).\(cost)")
-            }
-            return Verdict(level: .none, tag: "")
 
         }
     }

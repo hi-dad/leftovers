@@ -218,12 +218,9 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.helperPileup == 15)
     }
 
-    @Test func pileupAndExtensions() {
+    @Test func pileup() {
         var pile = item(.helperPileup); pile.title = "150 chat helpers"; pile.memoryMB = 15_000
         #expect(Rules.judge(pile, track: Track(firstSeen: now), ctx: ctx()).level == .warn)
-        let ext = item(.chromeExtension, cpu: 65, perHour: 4)
-        #expect(Rules.judge(ext, track: heavyTrack(for: 3 * min), ctx: ctx()).level == .none)
-        #expect(Rules.judge(ext, track: heavyTrack(for: 20 * min), ctx: ctx()).level == .warn)
     }
 
     @Test func readsHelperStatusFiles() throws {
@@ -297,6 +294,7 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Check.of(script) == .leftovers)
         #expect(Check.of(item(.android)) == .devices)
         #expect(Check.of(item(.spotlight)) == .spotlight)
-        #expect(Set(ItemKind.allCases.map { Check.of(item($0)) }).count >= 9)
+        // Every kind of row maps to a check (websites are told apart by their port), and every check is used.
+        #expect(Set(ItemKind.allCases.map { Check.of(item($0)) } + [Check.of(site)]) == Set(Check.allCases))
     }
 }
