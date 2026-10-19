@@ -3,7 +3,10 @@ import Foundation
 
 /// Stop and Keep. Nothing here runs without a click.
 extension Monitor {
-    func canStop(_ i: Item) -> Bool { [.leftover, .appStarted, .simulator, .android, .chatHelper].contains(i.kind) }
+    func canStop(_ i: Item) -> Bool {
+        [.leftover, .appStarted, .simulator, .android, .chatHelper].contains(i.kind)
+            || (i.kind == .sessionJob && i.verdict.tag == "Looks stuck")
+    }
 
     func stop(_ i: Item) {
         switch i.kind {
@@ -16,7 +19,8 @@ extension Monitor {
                 try? p.run(); p.waitUntilExit()
                 DispatchQueue.main.async { self.scan() }
             }
-        case .leftover, .appStarted, .android, .chatHelper:
+        case .leftover, .appStarted, .android, .chatHelper, .sessionJob:
+            guard canStop(i) else { return }
             let members = Array(zip(i.pids, i.startTimes))
             DispatchQueue.global(qos: .userInitiated).async {
                 // Only signal a pid if it is still the same process (pids get reused).

@@ -63,9 +63,28 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(t.heavySince == now)
     }
 
-    @Test func busyJobsOfARunningSessionNeverAlarm() {
-        let i = item(.sessionJob, cpu: 400, perHour: 15, average: 400, startedAgo: 9 * hour, lastOutputAgo: 9 * hour)
-        #expect(Rules.judge(i, track: heavyTrack(for: 9 * hour), ctx: ctx()).level == .none)
+    @Test func busyJobsOfARunningSessionAreLeftAlone() {
+        // Still writing, or not stuck for long enough: the chat's own business.
+        let writing = item(.sessionJob, cpu: 400, perHour: 15, average: 400, startedAgo: 9 * hour, lastOutputAgo: 5)
+        #expect(Rules.judge(writing, track: heavyTrack(for: 9 * hour), ctx: ctx()).level == .none)
+        let quietBriefly = item(.sessionJob, cpu: 400, perHour: 15, startedAgo: 2 * hour, lastOutputAgo: 40 * min)
+        #expect(Rules.judge(quietBriefly, track: heavyTrack(for: 2 * hour), ctx: ctx()).level == .none)
+        let notBusyLong = item(.sessionJob, cpu: 400, perHour: 15, startedAgo: 2 * hour, lastOutputAgo: 2 * hour)
+        #expect(Rules.judge(notBusyLong, track: heavyTrack(for: 40 * min), ctx: ctx()).level == .none)
+    }
+
+    @Test func aStuckJobOfAnOpenChatIsRedAfterAnHour() {
+        var i = item(.sessionJob, cpu: 250, perHour: 8, average: 240, startedAgo: 9 * hour, lastOutputAgo: 9 * hour)
+        let v = Rules.judge(i, track: heavyTrack(for: 9 * hour), ctx: ctx())
+        #expect(v.level == .alarm)
+        #expect(v.tag == "Looks stuck")
+        #expect(v.message.contains("Its chat “Session” is still open"))
+        i.noun = "Video export"; i.project = "zom-zom"; i.verdict = v
+        #expect(Describe.summary(i) == "Video export stuck in zom-zom")
+        #expect(Describe.advice(i)! == ("Safe to stop", "it isn't making progress"))
+        // A quiet process that's just waiting isn't wasting battery.
+        let waiting = item(.sessionJob, cpu: 0, perHour: 0, startedAgo: 9 * hour, lastOutputAgo: 9 * hour)
+        #expect(Rules.judge(waiting, track: Track(firstSeen: now), ctx: ctx()).level == .none)
     }
 
     @Test func aServerSomeoneIsUsingIsLeftAlone() {

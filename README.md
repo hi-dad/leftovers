@@ -45,11 +45,12 @@ Every row shows its **battery cost** as a share of your battery per hour (e.g. `
 
 ## When it warns you
 
-It warns you only when something is both **unowned** (its Claude session has ended) and **unused** (not making progress, nobody connected, not being looked at). Busy is not enough on its own.
+It warns you only when something is both **unowned** (its Claude session has ended) and **unused** (not making progress, nobody connected, not being looked at). Busy is not enough on its own. The one exception is a job a still-open chat started in the background: once Claude's reply ends nothing shows it's running, so it's flagged if it looks stuck for an hour.
 
 | | When | Example |
 |---|---|---|
 | 🔴 | Working hard for 30+ min but its output files haven't changed for 30+ min | "ffmpeg looks stuck" |
+| 🔴 | A job a still-open chat started, working hard for 1+ h with no output change for 1+ h | "ffmpeg looks stuck" |
 | 🟠 | Still busy 10+ min after its session ended | "A leftover from Claude is still running" |
 | 🟠 | A simulator running 2+ h without being used | "iPhone 17 is running unused" |
 | ⚪ | A dev server nobody has connected to for 1+ h | shown in the menu only |

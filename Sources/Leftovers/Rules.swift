@@ -129,6 +129,14 @@ enum Rules {
             return Verdict(level: .info, tag: "Left behind")
 
         case .appStarted, .sessionJob:
+            // Started in the background by a chat that's still open: once Claude's reply ends, nothing shows it's
+            // still going. Same as a stuck leftover, with a longer wait since the chat may come back to it.
+            if i.connections == 0, isHeavy(i), heavyFor >= hour * scale,
+               let out = i.lastOutput, now.timeIntervalSince(out) >= hour * scale {
+                let from = i.session.map { " Its chat “\($0)” is still open." } ?? ""
+                return Verdict(level: .alarm, tag: "Looks stuck",
+                               message: "\(i.title) has been working hard for \(Describe.duration(heavyFor)) but hasn't made progress in \(Describe.duration(now.timeIntervalSince(out))).\(from)\(cost)")
+            }
             // A server nobody has visited for 10 minutes is inactive (listed, never a warning).
             if let idle = idleServer, idle >= 10 * min * scale {
                 return Verdict(level: .info, tag: "Idle \(Describe.duration(idle))")

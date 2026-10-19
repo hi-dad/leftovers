@@ -325,7 +325,10 @@ struct ItemRow: View {
             if let f = item.apps.first { a.append(("Show folder", { m.reveal(f) })) }
             a.append(("Don't warn again", { m.switchOff(item) }))
         case .sessionJob:
-            break
+            if item.verdict.tag == "Looks stuck" {
+                a.append(("Stop", stop))
+                if m.kept[item.keepKey] == nil { a.append(("Ignore", { m.keep(item) })) }
+            }
         }
         return a
     }

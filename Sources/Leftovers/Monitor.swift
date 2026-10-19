@@ -122,7 +122,7 @@ final class Monitor: NSObject, ObservableObject {
             i.verdict = Rules.judge(i, track: t, ctx: ctx)
             i.status = Rules.status(i, track: t, ctx: ctx)
             return i
-        }
+        }.filter { $0.kind != .sessionJob || !$0.ports.isEmpty || $0.verdict.level > .none || $0.verdict.tag == "Ignored" }
         tracks = newTracks
         // A keep only lasts while that run is going: forget keeps for things that have stopped.
         let live = Set(items.map(\.keepKey))
@@ -244,8 +244,9 @@ final class Monitor: NSObject, ObservableObject {
 
         var items: [Item] = []
         items += g.leftovers.map { familyItem($0, kind: .leftover) }
-        // A session's own work is its business; only servers are shown (they have an Open button).
-        items += g.sessionJobs.map { familyItem($0, kind: .sessionJob) }.filter { !$0.ports.isEmpty }
+        // A session's own work is its business: only servers are shown (they have an Open button), plus jobs that
+        // look stuck (dropped in `judge` otherwise, after their busy time is tracked).
+        items += g.sessionJobs.map { familyItem($0, kind: .sessionJob) }
         items += g.appStarted.map { familyItem($0, kind: .appStarted) }.filter { $0.cpuPercent >= 2 || !$0.ports.isEmpty }
 
         // Simulators: everything running for that device (its launchd_sim family) counts toward it.

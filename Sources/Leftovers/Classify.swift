@@ -199,6 +199,7 @@ enum Describe {
         case .helperPileup:
             return "Too many Claude chats loaded (\(i.apps.count))"
         case .appStarted, .sessionJob:
+            if i.verdict.tag == "Looks stuck" { return "\(i.noun) stuck\(place)" }
             return i.ports.isEmpty ? i.noun + place : "Test website" + (i.project.map { " for \($0)" } ?? "")
         case .leftover:
             if !i.ports.isEmpty { return "Test website" + (i.project.map { $0 == "scratch files" ? place : " for \($0)" } ?? place) + " left running" }
@@ -257,7 +258,7 @@ enum Describe {
         case .cloudSync:
             return ("Fix", "move Claude's projects out of the synced folder, e.g. to ~/Developer")
         case .sessionJob:
-            return nil
+            return stuck ? ("Safe to stop", "it isn't making progress") : nil
         case .leftover, .appStarted:
             break
         }
