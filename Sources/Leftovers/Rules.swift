@@ -38,6 +38,16 @@ enum Rules {
     /// memory runs low, so this counts how many are loaded at once.
     static let helperPileup = 15
 
+    /// How long a chat's "busy" is believed. A chat stuck reporting busy (a permission prompt nobody answered,
+    /// or a reply that hung) would otherwise hide its stuck jobs, and the Claude-app checks, forever.
+    static let busyTrustLimit: TimeInterval = 2 * 3600
+
+    /// Whether a chat counts as working right now: busy, and not for implausibly long.
+    static func isWorking(_ h: HelperInfo?, now: Date) -> Bool {
+        guard let h, h.busy else { return false }
+        return now.timeIntervalSince(h.statusSince) < busyTrustLimit
+    }
+
     static func isHeavy(_ i: Item) -> Bool { i.cpuPercent >= 15 || (i.batteryPerHour ?? 0) >= 2 }
 
     /// When this row became heavy, carried over from the last scan. A process that has averaged

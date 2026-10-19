@@ -228,7 +228,7 @@ final class Monitor: NSObject, ObservableObject {
                             noun: st.ports.isEmpty ? Describe.noun(for: main) : "Test website",
                             starter: main.pid != root.pid && root.name != main.name ? Describe.title(for: root) : nil)
             // A chat's own job: note whether that chat is replying right now (its job is never flagged then).
-            if kind == .sessionJob { item.busy = helpers[root.ppid]?.busy ?? false }
+            if kind == .sessionJob { item.busy = Rules.isWorking(helpers[root.ppid], now: now) }
             let age = Describe.duration(now.timeIntervalSince(root.start))
             switch kind {
             case .leftover:
@@ -301,7 +301,7 @@ final class Monitor: NSObject, ObservableObject {
             let r = rate(p)
             let mem = fam.compactMap { ProcScan.usage($0.pid)?.memoryMB }.reduce(0, +)
             let info = helpers[p.pid]
-            if info?.busy == true { facts.claudeWorking = true }
+            if Rules.isWorking(info, now: now) { facts.claudeWorking = true }
             helperItems.append(Item(id: "helper-\(p.pid)-\(Int(p.start.timeIntervalSince1970))", kind: .chatHelper,
                                     title: info?.name ?? "Claude chat (\(classifier.project(for: p.cwd) ?? "terminal"))",
                                     detail: "", command: p.commandLine.prefix(200).description,

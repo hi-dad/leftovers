@@ -327,3 +327,16 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.judge(playing("Video"), track: heavyTrack(for: 20 * min), ctx: ctx(claudeIdle: 1 * min)).level == .none)
     }
 }
+
+@Suite struct BusyTrust {
+    func helper(busy: Bool, for t: TimeInterval) -> HelperInfo {
+        HelperInfo(pid: 1, name: "Chat", busy: busy, statusSince: now.addingTimeInterval(-t), fromApp: true)
+    }
+
+    @Test func busyIsBelievedForUpToTwoHours() {
+        #expect(Rules.isWorking(helper(busy: true, for: 10 * min), now: now))
+        #expect(!Rules.isWorking(helper(busy: true, for: 3 * hour), now: now))   // stuck "busy": stop trusting it
+        #expect(!Rules.isWorking(helper(busy: false, for: 10 * min), now: now))
+        #expect(!Rules.isWorking(nil, now: now))
+    }
+}
