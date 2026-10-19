@@ -4,13 +4,13 @@ A tiny Mac menu-bar app that spots things Claude left running and draining your 
 
 Its menu bar icon is a takeout box with chopsticks. A small **orange dot** means something needs a look; a **red dot** means something is stuck.
 
-### [⬇ Download Leftovers](https://github.com/dsryan8197/leftovers/releases/latest/download/Leftovers.dmg)
+### [⬇ Download Leftovers](https://github.com/hi-dad/leftovers/releases/latest/download/Leftovers.dmg)
 
 Free. Needs macOS 14 (Sonoma) or newer and the Claude desktop app. Always the latest version: it's rebuilt automatically whenever the app changes.
 
 ## Install
 
-1. **Download** [Leftovers.dmg](https://github.com/dsryan8197/leftovers/releases/latest/download/Leftovers.dmg) and open it.
+1. **Download** [Leftovers.dmg](https://github.com/hi-dad/leftovers/releases/latest/download/Leftovers.dmg) and open it.
 2. **Drag Leftovers into Applications** (the shortcut is right there in the window).
 3. **Open Leftovers** from Applications. macOS will say it *can't be opened*, because it isn't from the App Store or signed by Apple.
    Open **System Settings → Privacy & Security**, scroll down, and click **Open Anyway**. You only do this once.
