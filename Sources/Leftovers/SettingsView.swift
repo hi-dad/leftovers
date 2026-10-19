@@ -30,14 +30,6 @@ struct SettingsView: View {
                 }
             }
 
-            section("Kept running", note: "Things you chose to keep. Leftovers lists them but won't warn about them.") {
-                if m.kept.isEmpty {
-                    Text("Nothing yet").font(.system(size: 13)).foregroundStyle(.secondary)
-                }
-                ForEach(m.kept.sorted { $0.value < $1.value }, id: \.key) { key, label in
-                    row(label, button: "Forget") { m.unkeep(key) }
-                }
-            }
         }
         .toggleStyle(.switch)
         .controlSize(.regular)

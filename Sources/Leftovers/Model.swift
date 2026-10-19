@@ -93,7 +93,7 @@ struct Item: Identifiable, Codable, Equatable {
     var lastOutput: Date?         // newest change to a file it is writing
     var averageCpu: Double = 0    // CPU % averaged over each process's whole life
     var startTimes: [Double] = [] // start time of each pid, so Stop never hits a reused pid
-    var keepKey = ""              // what "Keep" remembers (project + command, or device + boot)
+    var keepKey = ""              // what "Keep" applies to: this one run (process + start time, device + boot)
     var verdict = Verdict(level: .none, tag: "")
     var noun = ""                 // plain name of what it is ("Python script", "Video export")
     var starter: String?          // the script that started it, when that's a different program

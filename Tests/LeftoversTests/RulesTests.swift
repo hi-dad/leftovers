@@ -93,6 +93,13 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
     }
 
 
+    @Test func keptMeansInUseForNow() {
+        let i = item(.leftover, cpu: 250, perHour: 8, lastOutputAgo: 47 * hour)
+        let v = Rules.judge(i, track: heavyTrack(for: 48 * hour), ctx: ctx(kept: ["key-x"]))
+        #expect(v.level == .none)   // listed under In use, no warning
+        #expect(Rules.status(i, track: heavyTrack(for: 48 * hour), ctx: ctx(kept: ["key-x"])).hasSuffix("you're using it"))
+    }
+
     @Test func keep() {
         let i = item(.leftover, cpu: 250, perHour: 8, lastOutputAgo: 47 * hour)
         let t = heavyTrack(for: 48 * hour)

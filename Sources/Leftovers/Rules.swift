@@ -91,7 +91,7 @@ enum Rules {
         case .spotlight, .cloudSync:
             parts = [busy, "\(i.apps.count) build folder\(i.apps.count == 1 ? "" : "s") changed"]
         }
-        if ctx.kept.contains(i.keepKey) { parts.append("kept") }
+        if ctx.kept.contains(i.keepKey) { parts.append("you're using it") }
         return parts.joined(separator: " · ")
     }
 
@@ -102,7 +102,8 @@ enum Rules {
         let now = ctx.now
         let min = 60.0, hour = 3600.0
 
-        if ctx.kept.contains(i.keepKey) { return Verdict(level: .info, tag: "Kept") }
+        // Kept = "I'm still using it": listed under In use (greyed), no warnings, until it stops.
+        if ctx.kept.contains(i.keepKey) { return Verdict(level: .none, tag: "Kept") }
 
         let cost = i.batteryPerHour.map { $0 >= 1 ? String(format: " It's using about %.0f%% of your battery an hour.", $0) : "" } ?? ""
         let heavyFor = track.heavySince.map { now.timeIntervalSince($0) } ?? 0

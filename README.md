@@ -53,9 +53,9 @@ It warns you only when something is both **unowned** (its Claude session has end
 | 🟠 | A simulator running 2+ h without being used | "iPhone 17 is running unused" |
 | ⚪ | A dev server nobody has connected to for 1+ h | shown in the menu only |
 
-On battery, all waits are cut in half. Each problem is announced once, with **Stop**, **Keep running** and **Remind me in an hour** buttons. When you unplug, you get one summary of anything still running.
+On battery, all waits are cut in half. Each problem is announced once, with **Stop** and **Keep running** buttons.
 
-**It never stops anything without a click.** Stop asks the process to quit, waits 5 seconds, then forces it if needed. It also stops the script that started it, so nothing starts again. **Keep** is remembered for that project and command.
+**It never stops anything without a click.** Stop asks the process to quit, waits 5 seconds, then forces it if needed. It also stops the script that started it, so nothing starts again. **Keep** means *you're still using it right now*: it moves to **Running · in use** (greyed out) and stops warning until it ends. Next time it runs, Leftovers watches it again. For Spotlight and cloud sync, **Don't warn again** switches that check off for good.
 
 **Settings → Watch for** lets you switch off any kind of check (say, Spotlight, if you'd rather keep it indexing); switched-off checks are never listed or notified.
 
@@ -66,7 +66,7 @@ On battery, all waits are cut in half. Each problem is announced once, with **St
 - It only looks at what Claude started. It finds Claude's chats by the program itself, wherever they run, and follows everything each chat starts. It **remembers** what each chat started, so a leftover is still recognised after the chat closes, in any folder. As a backup it also checks Claude's scratch folders and the folders Claude's own records say your chats worked in. There's nothing to set up, and it never touches your normal apps.
 - It's very light: about 0.02% of the battery per hour. It checks every minute on battery and every 3 minutes when plugged in.
 
-<img src="images/settings.png" width="400" alt="Settings: open at login, notifications, project folders, kept list">
+<img src="images/settings.png" width="400" alt="Settings: open at login, notifications, and which checks to watch for">
 
 ## Build
 

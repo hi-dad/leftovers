@@ -21,7 +21,7 @@ final class Monitor: NSObject, ObservableObject {
     @Published var offChecks: Set<Check> {
         didSet { UserDefaults.standard.set(offChecks.map(\.rawValue), forKey: "offChecks") }
     }
-    @Published var kept: [String: String] {   // keepKey → label shown in Settings
+    @Published var kept: [String: String] {   // keepKey → label (things you said you're still using)
         didSet { UserDefaults.standard.set(kept, forKey: "kept") }
     }
 
@@ -124,6 +124,9 @@ final class Monitor: NSObject, ObservableObject {
             return i
         }
         tracks = newTracks
+        // A keep only lasts while that run is going: forget keeps for things that have stopped.
+        let live = Set(items.map(\.keepKey))
+        if kept.keys.contains(where: { !live.contains($0) }) { kept = kept.filter { live.contains($0.key) } }
     }
 
     /// For testing from Terminal: `Leftovers --stop <text>` stops (or closes) the first row whose title contains it.
@@ -219,7 +222,7 @@ final class Monitor: NSObject, ObservableObject {
                             ports: st.ports, connections: st.connections,
                             lastOutput: st.writes.map(\.modified).max(), averageCpu: st.average,
                             startTimes: fam.map { $0.start.timeIntervalSince1970 },
-                            keepKey: "\(classifier.project(for: root.cwd) ?? root.cwd)|\(Describe.title(for: main))",
+                            keepKey: "\(kind.rawValue)-\(root.pid)-\(Int(root.start.timeIntervalSince1970))",
                             noun: st.ports.isEmpty ? Describe.noun(for: main) : "Test website",
                             starter: main.pid != root.pid && root.name != main.name ? Describe.title(for: root) : nil)
             let age = Describe.duration(now.timeIntervalSince(root.start))

@@ -2,8 +2,7 @@ import AppKit
 import IOKit.ps
 import UserNotifications
 
-/// Posts one notification per problem (again only if it gets worse), with Stop/Keep buttons,
-/// plus a single heads-up when you unplug while things are still running.
+/// Posts one notification per problem (again only if it gets worse), with Stop/Keep buttons.
 final class Notifier: NSObject, UNUserNotificationCenterDelegate {
     static let shared = Notifier()
     let m = Monitor.shared
@@ -60,21 +59,6 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
             post(id: i.id, title: title, body: i.verdict.message, category: category, quiet: quiet)
         }
 
-        // Just unplugged: one summary of what is still running.
-        if !wasOnBattery && m.battery.onBattery {
-            let sims = m.items.filter { $0.kind == .simulator }.count
-            let left = m.items.filter { $0.kind == .leftover && !m.kept.keys.contains($0.keepKey) }.count
-            let servers = m.items.filter { $0.kind == .appStarted && !$0.ports.isEmpty }.count
-            var parts: [String] = []
-            if left > 0 { parts.append(left == 1 ? "1 leftover" : "\(left) leftovers") }
-            if sims > 0 { parts.append(sims == 1 ? "1 simulator" : "\(sims) simulators") }
-            if servers > 0 { parts.append(servers == 1 ? "1 dev server" : "\(servers) dev servers") }
-            if !parts.isEmpty {
-                let list = ListFormatter.localizedString(byJoining: parts)
-                post(id: "unplugged", title: "You're on battery",
-                     body: "Still running from Claude: \(list).", category: "review", quiet: quiet)
-            }
-        }
     }
 
     private func post(id: String, title: String, body: String, category: String, quiet: Bool) {

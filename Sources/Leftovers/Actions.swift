@@ -40,6 +40,12 @@ extension Monitor {
         rejudge()
     }
 
+    /// "Don't warn again": switches that whole check off (same as unticking it in Settings → Watch for).
+    func switchOff(_ i: Item) {
+        offChecks.insert(Check.of(i))
+        scan()
+    }
+
     func unkeep(_ key: String) {
         kept[key] = nil
         rejudge()

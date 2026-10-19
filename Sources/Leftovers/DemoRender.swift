@@ -45,7 +45,7 @@ enum DemoRender {
         let ctx = RuleContext(now: now, onBattery: true, lastSimulatorUse: now.addingTimeInterval(-simUse),
                               lastClaudeWorking: now.addingTimeInterval(-3 * 3600),
                               lastAndroidUse: now.addingTimeInterval(-5 * 3600),
-                              kept: [])
+                              kept: ["kept-demo"])
         demo = demo.map { item in
             var i = item
             let track = Track(firstSeen: i.started, heavySince: i.started,
@@ -87,7 +87,8 @@ enum DemoRender {
                             project: "morse-waldo", ports: [5174], noun: "Test website")
             live.connections = 1
             var simInUse = sim; simInUse.verdict = Verdict(level: .none, tag: ""); simInUse.started = now.addingTimeInterval(-3600)
-            return ([site, live, simInUse], false)
+            var keptLoop = loop; keptLoop.verdict = Verdict(level: .none, tag: "Kept"); keptLoop.keepKey = "kept-demo"
+            return ([site, live, simInUse, keptLoop], false)
         case "leftovers":
             return ([stuck, loop, site], true)
         case "devices":

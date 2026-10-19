@@ -203,6 +203,7 @@ struct ItemRow: View {
             .disabled(stopping)
             if expanded { details.padding(.leading, 30) }
         }
+        .opacity(item.verdict.tag == "Kept" ? 0.55 : 1)
         .padding(.vertical, 10).padding(.horizontal, 10)
         .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.05)))
     }
@@ -291,24 +292,26 @@ struct ItemRow: View {
                 a.append((item.kind == .simulator ? "Shut down" : "Stop", stop))
             }
             if m.kept[item.keepKey] != nil {
-                a.append(("Stop keeping", { m.unkeep(item.keepKey) }))
+                a.append(("Undo keep", { m.unkeep(item.keepKey) }))
             } else if item.verdict.level >= .info {
                 a.append(("Keep", { m.keep(item) }))
             }
         case .android:
             a.append(("Shut down", stop))
-            if m.kept[item.keepKey] != nil { a.append(("Stop keeping", { m.unkeep(item.keepKey) })) }
+            if m.kept[item.keepKey] != nil { a.append(("Undo keep", { m.unkeep(item.keepKey) })) }
             else if item.verdict.level >= .info { a.append(("Keep", { m.keep(item) })) }
         case .claudePreview:
             a.append(("Open Claude", { m.openClaude() }))
         case .spotlight:
             a.append(("Open Spotlight settings", { m.openSpotlightSettings() }))
+            a.append(("Don't warn again", { m.switchOff(item) }))
         case .chatHelper:
             if !item.busy { a.append(("Close", stop)) }
         case .helperPileup:
             break
         case .cloudSync:
             if let f = item.apps.first { a.append(("Show folder", { m.reveal(f) })) }
+            a.append(("Don't warn again", { m.switchOff(item) }))
         case .sessionJob:
             break
         }
