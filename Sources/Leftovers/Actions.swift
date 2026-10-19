@@ -45,13 +45,6 @@ extension Monitor {
         rejudge()
     }
 
-    func closeTab(_ i: Item) {
-        DispatchQueue.global(qos: .userInitiated).async {
-            Extras.closeChromeTabs(url: i.command)
-            DispatchQueue.main.async { self.scan() }
-        }
-    }
-
     func openSpotlightSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.Spotlight-Settings.extension") {
             NSWorkspace.shared.open(url)

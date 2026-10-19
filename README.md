@@ -30,7 +30,6 @@ Every row reads the same way:
 | **Simulators** | Booted iPhone/iPad simulators, and which app each one is running. | Shut down · Keep |
 | **Started by the Claude app** / **Running in a Claude session** | Dev/preview servers, with whether anyone is connected. | Open · Stop |
 | **Android emulators** | Treated like iPhone simulators. | Shut down · Keep |
-| **Chrome tabs** | Tabs showing Claude's test pages (localhost or project files), when you haven't used Chrome for a while. | Close tab · Keep |
 | **Claude app previews** | The Claude app drawing hard while no chat is working, usually an animated preview or artifact left open. | Open Claude |
 | **Spotlight** | Spotlight busy indexing Claude's freshly made build folders (node_modules, .build…). | Open Spotlight settings |
 | **Cloud sync** | iCloud/OneDrive/Dropbox busy uploading Claude's build folders. | Show folder |
@@ -63,7 +62,7 @@ On battery, all waits are cut in half. Each problem is announced once, with **St
 ## Privacy & permissions
 
 - Fully offline. It reads the process list, battery info and the Claude app's session titles on your Mac. Nothing leaves the computer.
-- Permissions (standard macOS prompts): notifications; Chrome tab addresses (only while Chrome is open, for the tab check); Desktop folder dates (only when Spotlight or cloud sync is busy).
+- Permissions (standard macOS prompts): notifications; Desktop folder dates (only when Spotlight or cloud sync is busy).
 - It only looks at what Claude started. It finds Claude's chats by the program itself, wherever they run, and follows everything each chat starts. It **remembers** what each chat started, so a leftover is still recognised after the chat closes, in any folder. As a backup it also checks Claude's scratch folders and the folders Claude's own records say your chats worked in. There's nothing to set up, and it never touches your normal apps.
 - It's very light: about 0.02% of the battery per hour. It checks every minute on battery and every 3 minutes when plugged in.
 

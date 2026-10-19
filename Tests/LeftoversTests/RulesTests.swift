@@ -151,26 +151,6 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(v.message.contains("zom-zom/node_modules"))
     }
 
-    @Test func tabsOnlyWhenChromeIsIdle() {
-        let tab = item(.browserTab, cpu: 30, perHour: nil)
-        let longOpen = Track(firstSeen: now.addingTimeInterval(-2 * hour), heavySince: now.addingTimeInterval(-hour))
-        var used = ctx(); used.lastChromeUse = now.addingTimeInterval(-5 * min)
-        #expect(Rules.judge(tab, track: longOpen, ctx: used).level == .none)
-        var idle = ctx(); idle.lastChromeUse = now.addingTimeInterval(-2 * hour)
-        #expect(Rules.judge(tab, track: longOpen, ctx: idle).level == .warn)
-        let quiet = item(.browserTab, cpu: 1, perHour: nil)
-        #expect(Rules.judge(quiet, track: Track(firstSeen: now.addingTimeInterval(-2 * hour)), ctx: idle).tag == "Open tab")
-    }
-
-    @Test func pagesThatCount() {
-        let folders = ["/Users/test/Desktop/claude"]
-        #expect(Extras.isClaudePage("http://localhost:5173/", folders: folders))
-        #expect(Extras.isClaudePage("http://127.0.0.1:8000/index.html", folders: folders))
-        #expect(Extras.isClaudePage("file:///Users/test/Desktop/claude/morse-waldo/index.html", folders: folders))
-        #expect(!Extras.isClaudePage("https://github.com/", folders: folders))
-        #expect(!Extras.isClaudePage("file:///Users/test/Documents/a.html", folders: folders))
-    }
-
     @Test func everyRowYouCanActOnSaysWhatHappens() {
         for kind in ItemKind.allCases where kind != .sessionJob {
             var i = item(kind); i.noun = kind == .android ? "Android emulator" : "Python script"

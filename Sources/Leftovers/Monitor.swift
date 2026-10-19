@@ -16,7 +16,6 @@ final class Monitor: NSObject, ObservableObject {
     var tracks: [String: Track] = [:]
     var lastSimulatorUse: Date?
     var lastAndroidUse: Date?
-    var lastChromeUse: Date?
     var lastClaudeWorking = SessionIndex.load().sessions.values.map(\.lastActivityAt).max() ?? Date()
     /// Checks switched off in Settings: their rows are never shown or notified.
     @Published var offChecks: Set<Check> {
@@ -113,8 +112,7 @@ final class Monitor: NSObject, ObservableObject {
         if facts.claudeWorking { lastClaudeWorking = now }
         if facts.simPanelActive { lastSimulatorUse = now }
         let ctx = RuleContext(now: now, onBattery: battery.onBattery, lastSimulatorUse: lastSimulatorUse,
-                              lastClaudeWorking: lastClaudeWorking, lastAndroidUse: lastAndroidUse,
-                              lastChromeUse: lastChromeUse, kept: Set(kept.keys),
+                              lastClaudeWorking: lastClaudeWorking, lastAndroidUse: lastAndroidUse, kept: Set(kept.keys),
                               speedup: max(1, UserDefaults.standard.double(forKey: "ruleSpeedup")))
         var newTracks: [String: Track] = [:]
         items = raw.filter { !offChecks.contains(Check.of($0)) }.map { item in
@@ -381,28 +379,6 @@ final class Monitor: NSObject, ObservableObject {
                               batteryPerHour: perHour(st.watts), averageCpu: st.average,
                               startTimes: fam.map { $0.start.timeIntervalSince1970 },
                               keepKey: "android-\(avd)-\(Int(p.start.timeIntervalSince1970))", noun: "Android emulator"))
-        }
-
-        // #14 Chrome tabs showing Claude's test pages. Chrome's page processes' total use is attached, since
-        // Chrome doesn't say which tab uses what.
-        // (LEFTOVERS_NO_CHROME=1 skips this when testing from Terminal, so macOS doesn't ask Terminal for Chrome access.)
-        if ProcessInfo.processInfo.environment["LEFTOVERS_NO_CHROME"] == nil,
-           procs.contains(where: { $0.name == "Google Chrome" && $0.path.hasPrefix("/Applications/") }) {
-            // Page processes only (not extensions).
-            let renderers = procs.filter { $0.path.contains("Google Chrome") && $0.name.contains("Renderer")
-                && !$0.args.contains("--extension-process") }
-            var chromeCPU = 0.0
-            for r in renderers { chromeCPU += rate(r).cpu }
-            let servers = items.filter { !$0.ports.isEmpty }
-            for tab in Extras.chromeTabs(claudeFolders: claudeFolders) {
-                let port = URL(string: tab.url)?.port.map(UInt16.init)
-                let server = servers.first { s in port.map { s.ports.contains($0) } ?? false }
-                let fileProject = URL(string: tab.url).flatMap { $0.isFileURL ? classifier.project(for: $0.path) : nil }
-                items.append(Item(id: "tab-" + tab.url, kind: .browserTab, title: tab.title, detail: "", command: tab.url,
-                                  project: server?.project ?? fileProject, pids: [], started: now,
-                                  cpuPercent: chromeCPU, keepKey: "tab-" + tab.url, noun: "Chrome tab",
-                                  apps: server == nil && !tab.url.hasPrefix("file:") ? ["server stopped"] : []))
-            }
         }
 
         previous = samples

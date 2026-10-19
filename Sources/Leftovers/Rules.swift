@@ -28,7 +28,6 @@ struct RuleContext {
     var lastSimulatorUse: Date?   // Simulator app in front, or Claude's simulator panel streaming
     var lastClaudeWorking: Date   // a Claude Code session doing something
     var lastAndroidUse: Date? = nil  // the Android emulator window in front
-    var lastChromeUse: Date? = nil   // Chrome in front
     var kept: Set<String>
     var speedup: Double = 1
 }
@@ -83,8 +82,6 @@ enum Rules {
             let use = i.kind == .simulator ? ctx.lastSimulatorUse : ctx.lastAndroidUse
             if let use, use > i.started, let a = ago(use) { parts = ["Running " + dur(i.started), "last used " + a] }
             else { parts = ["Running " + dur(i.started), "not used yet"] }
-        case .browserTab:
-            parts = ["Open " + dur(track.firstSeen), ago(ctx.lastChromeUse).map { "Chrome last used " + $0 } ?? "Chrome not used since"]
         case .chatHelper:
             parts = i.busy ? ["Working now"] : [busy, "last message " + (ago(i.idleSince) ?? "a while ago")]
         case .helperPileup:
@@ -169,16 +166,6 @@ enum Rules {
                                message: "\(who) Claude's build files for \(Describe.duration(heavyFor)) (\(i.apps.prefix(2).joined(separator: ", ")))." )
             }
             return Verdict(level: .none, tag: "")
-
-        case .browserTab:
-            let open = now.timeIntervalSince(track.firstSeen)
-            let unused = now.timeIntervalSince(ctx.lastChromeUse ?? track.firstSeen)
-            guard open >= 30 * min * scale, unused >= 30 * min * scale else { return Verdict(level: .none, tag: "") }
-            if isHeavy(i), heavyFor >= 10 * min * scale {
-                return Verdict(level: .warn, tag: "Tab busy",
-                               message: "A Chrome tab with one of Claude's test pages has been open for \(Describe.duration(open)) and Chrome is busy, though you haven't used Chrome in \(Describe.duration(unused)).")
-            }
-            return Verdict(level: .info, tag: "Open tab")
 
         case .chatHelper:
             if i.busy { return Verdict(level: .none, tag: "Working") }

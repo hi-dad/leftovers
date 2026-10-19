@@ -44,7 +44,7 @@ enum DemoRender {
         let simUse: TimeInterval = scenario == "quiet" ? 5 * 60 : 30 * 3600
         let ctx = RuleContext(now: now, onBattery: true, lastSimulatorUse: now.addingTimeInterval(-simUse),
                               lastClaudeWorking: now.addingTimeInterval(-3 * 3600),
-                              lastAndroidUse: now.addingTimeInterval(-5 * 3600), lastChromeUse: now.addingTimeInterval(-2 * 3600),
+                              lastAndroidUse: now.addingTimeInterval(-5 * 3600),
                               kept: [])
         demo = demo.map { item in
             var i = item
@@ -93,9 +93,7 @@ enum DemoRender {
         case "devices":
             var emu = make(.android, "Pixel 8", hours: 6, perHour: 6, .warn, "Unused 5 h", noun: "Android emulator")
             emu.cpuPercent = 60
-            var tab = make(.browserTab, "Zom-Zom", hours: 3, perHour: 0, .warn, "Tab busy", project: "zom-zom", noun: "Chrome tab")
-            tab.command = "http://localhost:8000/"; tab.batteryPerHour = nil
-            return ([sim, emu, tab], false)
+            return ([sim, emu], false)
         case "claude", "chats":
             var chat = make(.chatHelper, "Project ideas", hours: 0.33, perHour: 6, .warn, "Stuck", noun: "Chat helper")
             chat.memoryMB = 240; chat.idleSince = now.addingTimeInterval(-3 * 3600)

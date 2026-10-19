@@ -30,13 +30,12 @@ cat > $APP/Contents/Info.plist <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>LSUIElement</key><true/>
-  <key>NSAppleEventsUsageDescription</key><string>Leftovers reads your Chrome tab addresses to find test pages Claude left open, and closes a tab when you click Close tab.</string>
   <key>NSDesktopFolderUsageDescription</key><string>Leftovers checks whether Claude's build folders on your Desktop are what Spotlight or cloud sync is busy with. It only looks at folder dates.</string>
   <key>NSHumanReadableCopyright</key><string>Free and offline.</string>
 </dict></plist>
 PLIST
 
-# Signing: a stable certificate lets macOS remember Leftovers' permissions (Chrome, Desktop) across rebuilds.
+# Signing: a stable certificate lets macOS remember Leftovers' permissions (Desktop folder) across rebuilds.
 # Uses, in order: $SIGN_IDENTITY, the name in a local .signing-identity file (git-ignored, yours only),
 # your first valid code-signing certificate (e.g. Xcode's "Apple Development"), or ad-hoc signing.
 IDENTITY="${SIGN_IDENTITY:-}"

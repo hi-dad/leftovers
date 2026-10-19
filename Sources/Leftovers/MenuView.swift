@@ -24,7 +24,6 @@ struct MenuView: View {
         m.items.filter { i in
             switch i.kind {
             case .leftover, .appStarted, .sessionJob, .simulator, .android: true
-            case .browserTab: i.verdict.level >= .info
             case .claudePreview, .spotlight, .cloudSync, .helperPileup, .chatHelper:
                 i.verdict.level >= .warn
             }
@@ -232,11 +231,6 @@ struct ItemRow: View {
         case .helperPileup:
             if let mb = item.memoryMB { rows.append(("Memory", String(format: "%.1f GB in total", mb / 1024))) }
             for (n, chat) in item.apps.enumerated() { rows.append((n == 0 ? "Chats loaded" : " ", chat)) }
-        case .browserTab:
-            rows.append(("Page", item.title))
-            rows.append(("Address", item.command))
-            if let p = item.project { rows.append(("Project", p)) }
-            rows.append(("Chrome pages", String(format: "%.0f%% CPU in total", item.cpuPercent)))
         default:
             rows.append(("Program", item.title))
             if let s = item.starter { rows.append(("Started by", s)) }
@@ -286,7 +280,7 @@ struct ItemRow: View {
 
     private var actions: [(String, () -> Void)] {
         if stopping {
-            return [(item.kind == .browserTab ? "Closing…" : [.simulator, .android].contains(item.kind) ? "Shutting down…" : "Stopping…", {})]
+            return [([.simulator, .android].contains(item.kind) ? "Shutting down…" : "Stopping…", {})]
         }
         var a: [(String, () -> Void)] = []
         let stop = { stopping = true; m.stop(item) }
@@ -305,9 +299,6 @@ struct ItemRow: View {
             a.append(("Shut down", stop))
             if m.kept[item.keepKey] != nil { a.append(("Stop keeping", { m.unkeep(item.keepKey) })) }
             else if item.verdict.level >= .info { a.append(("Keep", { m.keep(item) })) }
-        case .browserTab:
-            a.append(("Close tab", { stopping = true; m.closeTab(item) }))
-            if m.kept[item.keepKey] == nil { a.append(("Keep", { m.keep(item) })) }
         case .claudePreview:
             a.append(("Open Claude", { m.openClaude() }))
         case .spotlight:

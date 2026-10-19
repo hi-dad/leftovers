@@ -188,8 +188,6 @@ enum Describe {
             return "Spotlight re-indexing files on every Claude build"
         case .cloudSync:
             return "Cloud sync re-uploading files on every Claude build"
-        case .browserTab:
-            return "Chrome tab still open: \(i.title)" + (i.project.map { " (\($0))" } ?? "")
         case .chatHelper:
             return i.verdict.tag == "Stuck" ? "Claude chat stuck in a loop: “\(i.title)”" : "“\(i.title)”"
         case .helperPileup:
@@ -212,7 +210,6 @@ enum Describe {
         switch i.kind {
         case .simulator: return "iphone"
         case .android: return "smartphone"
-        case .browserTab: return "safari"
         case .chatHelper, .helperPileup: return "bubble.left.and.bubble.right"
         case .claudePreview: return "macwindow"
         case .spotlight: return "magnifyingglass"
@@ -235,8 +232,6 @@ enum Describe {
         switch i.kind {
         case .simulator, .android:
             return ("Safe to shut down", "your app and project aren't touched")
-        case .browserTab:
-            return ("Safe to close", "nothing else is affected")
         case .chatHelper:
             return ("Safe to close", "the chat stays and reopens normally")
         case .helperPileup:

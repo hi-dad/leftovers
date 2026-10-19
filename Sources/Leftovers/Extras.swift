@@ -1,6 +1,6 @@
 import Foundation
 
-/// Facts for the checks beyond Claude's own processes: Spotlight, cloud sync and Chrome tabs.
+/// Facts for the checks beyond Claude's own processes: Spotlight and cloud sync.
 enum Extras {
     /// CPU % of every process (including system ones Leftovers can't measure directly), via ps.
     static func systemCPU() -> [(pid: pid_t, name: String, cpu: Double)] {
@@ -54,47 +54,6 @@ enum Extras {
                 || (desktopSynced && real.hasPrefix(home + "/Desktop/"))
                 || (documentsSynced && real.hasPrefix(home + "/Documents/"))
         }
-    }
-
-    struct Tab { var url: String; var title: String }
-
-    /// Chrome tabs showing a local test page or a file from a Claude folder. Only called while Chrome is
-    /// running (asking a closed Chrome would open it). The first call shows macOS's "control Chrome" prompt.
-    static func chromeTabs(claudeFolders: [String]) -> [Tab] {
-        let script = """
-        set out to ""
-        tell application "Google Chrome"
-            repeat with w in windows
-                repeat with t in tabs of w
-                    set out to out & (URL of t) & tab & (title of t) & linefeed
-                end repeat
-            end repeat
-        end tell
-        return out
-        """
-        guard let out = run("/usr/bin/osascript", ["-e", script]) else { return [] }
-        return out.split(separator: "\n").compactMap { line in
-            let parts = line.split(separator: "\t", maxSplits: 1).map(String.init)
-            guard let url = parts.first, isClaudePage(url, folders: claudeFolders) else { return nil }
-            return Tab(url: url, title: parts.count > 1 ? parts[1] : url)
-        }
-    }
-
-    static func isClaudePage(_ url: String, folders: [String]) -> Bool {
-        guard let u = URL(string: url) else { return false }
-        if u.scheme == "file" { return folders.contains { u.path.hasPrefix($0 + "/") } || u.path.contains("/tmp/claude-") }
-        return ["localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"].contains(u.host ?? "")
-    }
-
-    static func closeChromeTabs(url: String) {
-        let quoted = url.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
-        _ = run("/usr/bin/osascript", ["-e", """
-        tell application "Google Chrome"
-            repeat with w in windows
-                close (every tab of w whose URL is "\(quoted)")
-            end repeat
-        end tell
-        """])
     }
 
     @discardableResult

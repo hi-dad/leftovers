@@ -56,14 +56,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             ws.addObserver(forName: name, object: nil, queue: .main) { n in
                 let app = n.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
                 if app?.bundleIdentifier == "com.apple.iphonesimulator" { Monitor.shared.lastSimulatorUse = Date() }
-                if app?.bundleIdentifier == "com.google.Chrome" { Monitor.shared.lastChromeUse = Date() }
                 if app?.executableURL?.lastPathComponent.hasPrefix("qemu-system") == true { Monitor.shared.lastAndroidUse = Date() }
             }
         }
         if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.apple.iphonesimulator" {
             m.lastSimulatorUse = Date()
         }
-        if NSWorkspace.shared.frontmostApplication?.bundleIdentifier == "com.google.Chrome" { m.lastChromeUse = Date() }
         m.start()
         // For screenshots in testing: `open Leftovers.app --args -openOnLaunch YES`.
         if UserDefaults.standard.bool(forKey: "openOnLaunch") {
