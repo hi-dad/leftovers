@@ -79,7 +79,7 @@ Needs the Swift toolchain (Xcode or Command Line Tools); no Xcode project.
 swift test      # alarm-rule and classification tests
 ```
 
-Testing helpers: `Leftovers --once` prints one scan as JSON, `Leftovers --render-demo out.png [--settings]` draws the README pictures, `Leftovers --stop <title>` stops a matching leftover, and `defaults write com.danielryan.Leftovers ruleSpeedup -float 60` makes every wait 60× shorter (delete it afterwards).
+Testing helpers: `Leftovers --once` prints one scan as JSON, `Leftovers --render-demo out.png [--settings]` draws the README pictures, `Leftovers --stop <title>` stops a matching leftover, and `defaults write com.danielryan.Leftovers ruleSpeedup -float 60` makes every wait 60× shorter (delete it afterwards). `defaults write com.danielryan.Leftovers testFolders -array <folder>` adds a folder to watch (testing only).
 
 ## License
 

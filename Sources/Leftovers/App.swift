@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 import SwiftUI
 
 @main
@@ -41,6 +42,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "")
             .contains(where: { $0 != me }) {
             NSApp.terminate(nil); return
+        }
+        // First launch: open at login, so Leftovers is still watching after a restart (it can't catch anything
+        // if it isn't running). Switchable in Settings. Only for the installed app, never a test build.
+        if !UserDefaults.standard.bool(forKey: "setUpOpenAtLogin"), Bundle.main.bundlePath.hasPrefix("/Applications/") {
+            UserDefaults.standard.set(true, forKey: "setUpOpenAtLogin")
+            try? SMAppService.mainApp.register()
         }
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.target = self

@@ -156,7 +156,9 @@ final class Monitor: NSObject, ObservableObject {
         let configDir = procs.lazy.filter(probe.isClaudeCode)
             .compactMap { ProcScan.environmentValue($0.pid, "CLAUDE_CONFIG_DIR") }.first ?? probe.configDir
         let helpers = HelperInfo.load(from: configDir + "/sessions")
-        let classifier = Classifier(watchedFolders: sessions.workFolders, configDir: configDir,
+        // (`defaults write com.danielryan.Leftovers testFolders -array <folder>` adds folders, for testing only.)
+        let testFolders = (UserDefaults.standard.array(forKey: "testFolders") as? [String]) ?? []
+        let classifier = Classifier(watchedFolders: sessions.workFolders + testFolders, configDir: configDir,
                                     remembered: Set(remembered.keys))
         let g = classifier.group(procs)
 
@@ -281,6 +283,8 @@ final class Monitor: NSObject, ObservableObject {
                 renderCPU += r.cpu; renderWatts += r.watts
                 renderers.append((p.pid, r.cpu, ProcScan.usage(p.pid)?.memoryMB ?? 0))
             }
+            // The graphics process does the actual drawing for animations and video, so it counts too.
+            if p.args.contains("--type=gpu-process") { renderCPU += r.cpu; renderWatts += r.watts }
             // Claude's simulator panel streams frames while it is showing a simulator.
             if p.name == "claude-ios-sim", r.cpu >= 3 { facts.simPanelActive = true }
         }
