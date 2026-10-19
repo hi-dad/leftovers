@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     var lastClose = Date.distantPast
     var watchers: Set<AnyCancellable> = []
     var clickMonitor: Any?
+    var dotLayer: CALayer?
 
     func applicationDidFinishLaunching(_ n: Notification) {
         let me = NSRunningApplication.current
@@ -73,21 +74,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
-    /// Plain leaf when all is well; a count beside it (orange, or red if something looks stuck) when not.
+    /// The takeout-box icon; a small orange dot when something needs a look, red when something is stuck.
     func updateIcon(_ items: [Item]) {
-        let flagged = items.filter { $0.verdict.level >= .warn }
-        let worst = flagged.map(\.verdict.level).max() ?? .none
-        let img = NSImage(systemSymbolName: flagged.isEmpty ? "leaf" : "leaf.fill", accessibilityDescription: "Leftovers")
-        img?.isTemplate = true
-        item.button?.image = img
-        item.button?.imagePosition = .imageLeading
-        if flagged.isEmpty {
-            item.button?.attributedTitle = NSAttributedString(string: "")
-        } else {
-            let color: NSColor = worst == .alarm ? .systemRed : .systemOrange
-            item.button?.attributedTitle = NSAttributedString(string: " \(flagged.count)", attributes: [
-                .foregroundColor: color, .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)])
+        guard let button = item.button else { return }
+        let worst = items.map(\.verdict.level).filter { $0 >= .warn }.max()
+        button.image = MenuBarIcon.image
+        button.imagePosition = .imageOnly
+        button.title = ""
+        button.wantsLayer = true
+        if dotLayer == nil, let layer = button.layer {
+            let dot = CALayer()
+            dot.cornerRadius = MenuBarIcon.dotSize / 2
+            layer.addSublayer(dot)
+            dotLayer = dot
         }
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        dotLayer?.frame = MenuBarIcon.dotFrame(in: button.bounds, flipped: button.layer?.isGeometryFlipped == true || button.isFlipped)
+        dotLayer?.backgroundColor = (worst == .alarm ? NSColor.systemRed : NSColor.systemOrange).cgColor
+        dotLayer?.isHidden = worst == nil
+        CATransaction.commit()
+        button.setAccessibilityLabel(worst == nil ? "Leftovers: all clear" : "Leftovers: something needs a look")
     }
 
     @objc func toggleDrop() {

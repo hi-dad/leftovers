@@ -51,7 +51,7 @@ enum Check: String, CaseIterable, Codable {
     var label: String {
         switch self {
         case .leftovers: "Scripts and jobs left running"
-        case .websites: "Test websites"
+        case .websites: "Test websites (local web servers)"
         case .stuckChats: "Claude chats stuck in a loop"
         case .tooManyChats: "Too many Claude chats loaded"
         case .devices: "iPhone simulators and Android emulators"

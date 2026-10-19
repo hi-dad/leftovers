@@ -2,6 +2,8 @@
 
 A tiny Mac menu-bar app that spots things Claude left running and draining your battery, then stops them with one click.
 
+Its menu bar icon is a takeout box with chopsticks. A small **orange dot** means something needs a look; a **red dot** means something is stuck.
+
 <img src="images/all-clear.png" width="400" alt="Leftovers showing a green All clear banner">
 
 <img src="images/menu.png" width="400" alt="The Leftovers dropdown: a stuck job flagged red, an unused simulator, an idle dev server, each with buttons">
