@@ -18,18 +18,18 @@ enum DemoRender {
         }
         var stuck = item(.leftover, "Video encoding (ffmpeg)", "", hours: 48, perHour: 8,
                          verdict: Verdict(level: .alarm, tag: "Looks stuck"), project: "scratch files", output: 47)
-        stuck.noun = "Video export"; stuck.session = "QuickNote ad video"; stuck.starter = "Script build.sh"
-        stuck.folder = NSHomeDirectory() + "/Desktop/claude/quick-ad"
-        stuck.command = "ffmpeg -i 67.mov -i 66.mov -filter_complex … -c:v libx264 quicknote-ad.mp4"
+        stuck.noun = "Video export"; stuck.session = "Product demo video"; stuck.starter = "Script build.sh"
+        stuck.folder = NSHomeDirectory() + "/Projects/demo-video"
+        stuck.command = "ffmpeg -i intro.mov -i outro.mov -filter_complex … -c:v libx264 demo.mp4"
         stuck.cpuPercent = 250
         var loop = item(.leftover, "Python one-liner", "", hours: 2, perHour: 3,
-                        verdict: Verdict(level: .warn, tag: "Forgotten"), project: "zom-zom")
+                        verdict: Verdict(level: .warn, tag: "Forgotten"), project: "data-cleanup")
         loop.noun = "Python script"
         var sim = item(.simulator, "iPhone 17 (iOS 27.0)", "", hours: 31, perHour: 4,
                        verdict: Verdict(level: .warn, tag: "Unused 30 h"))
-        sim.noun = "iPhone simulator"; sim.apps = ["StoryboardAR"]
+        sim.noun = "iPhone simulator"; sim.apps = ["MyApp"]
         var site = item(.appStarted, "Dev server (Vite) on port 5173", "", hours: 3, perHour: 0.2,
-                        verdict: Verdict(level: .info, tag: "Idle 2 h"), project: "pokemon-silverwind", ports: [5173])
+                        verdict: Verdict(level: .info, tag: "Idle 2 h"), project: "my-website", ports: [5173])
         site.noun = "Test website"
         var demo = [stuck, loop, sim, site]
         UIState.shared.expandID = nil
@@ -84,7 +84,7 @@ enum DemoRender {
             return ([], false)
         case "quiet":
             var live = make(.sessionJob, "Dev server (Vite) on port 5174", hours: 0.5, perHour: 0.3, .none, "",
-                            project: "morse-waldo", ports: [5174], noun: "Test website")
+                            project: "recipe-app", ports: [5174], noun: "Test website")
             live.connections = 1
             var simInUse = sim; simInUse.verdict = Verdict(level: .none, tag: ""); simInUse.started = now.addingTimeInterval(-3600)
             var keptLoop = loop; keptLoop.verdict = Verdict(level: .none, tag: "Ignored"); keptLoop.keepKey = "kept-demo"
@@ -100,8 +100,8 @@ enum DemoRender {
             chat.memoryMB = 240; chat.idleSince = now.addingTimeInterval(-3 * 3600)
             var pile = make(.helperPileup, "9 chat helpers", hours: 0, perHour: 0, .warn, "Pile-up", noun: "Chat helpers")
             pile.memoryMB = 1650; pile.batteryPerHour = nil
-            pile.apps = ["Snail House levels", "Project ideas", "Rectangle app deletion", "Cloudflare email domain",
-                         "DesktopCatProject setup", "Scheduled actions", "Auto-approve for all projects", "Zom-Zom guns", "Pokémon maps"]
+            pile.apps = ["Landing page redesign", "Project ideas", "Fix login bug", "Trip planner",
+                         "Recipe app setup", "Weekly report", "Budget spreadsheet", "Blog post draft", "Photo organizer"]
             var playback = make(.claudePlayback, "Claude app windows", hours: 0.5, perHour: 5, .warn, "Busy preview", noun: "Animation or artifact")
             playback.cpuPercent = 55
             playback.notes = ["Playing: animation or artifact", "Busiest part: a side panel or preview (51% CPU)", "Claude windows on screen: 1", "Claude in front: no (busy in the background)"]
@@ -111,11 +111,11 @@ enum DemoRender {
             return name == "chats" ? ([pile], false) : ([chat, pile, playback, preview], name == "claude")
         case "system":
             var spot = make(.spotlight, "Spotlight indexing", hours: 0.33, perHour: 0, .warn, "Indexing", noun: "Spotlight")
-            spot.apps = ["~/Desktop/claude/prayer-circle/node_modules", "~/Desktop/claude/snail-house/node_modules",
-                         "~/Desktop/claude/leftovers/.build"]
+            spot.apps = ["~/Projects/recipe-app/node_modules", "~/Projects/my-website/node_modules",
+                         "~/Projects/MyApp/.build"]
             spot.batteryPerHour = nil
             var sync = make(.cloudSync, "Cloud sync", hours: 0.5, perHour: 0, .warn, "Syncing", noun: "Cloud sync")
-            sync.apps = ["~/Documents/apps/our-sims/node_modules"]; sync.batteryPerHour = nil
+            sync.apps = ["~/Documents/apps/trip-planner/node_modules"]; sync.batteryPerHour = nil
             return ([spot, sync], false)
         default:
             return ([stuck, loop, sim, site], false)
