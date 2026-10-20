@@ -256,18 +256,31 @@ let designs: [String: Design] = [
             }
         }
     },
-    // A takeout box with chopsticks.
-    "leftovers": Design(top: 0xFF9E8F, bottom: 0xD9383F) { p in takeout(p, chop: 0xFFFFFF, front: true, flaps: false, steam: false) },
-    // A note with bullet points.
+    "leftovers": Design(top: 0xFF9E8F, bottom: 0xD9383F) { p in
+        // The menu bar icon's takeout box: tapered box, zig-zag folded flaps, chopsticks rising out of it.
+        func m(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: 49 + (x - 9) * 5, y: 50 + (y - 9) * 5) }
+        p.line(m(10.6, 5.6).x, m(10.6, 5.6).y, m(15.4, 1.4).x, m(15.4, 1.4).y, hex(0xFFFFFF), 3.6)
+        p.line(m(12.0, 6.0).x, m(12.0, 6.0).y, m(16.8, 2.4).x, m(16.8, 2.4).y, hex(0xFFFFFF), 3.6)
+        let body = CGMutablePath()
+        body.move(to: m(3.2, 7.5)); body.addLine(to: m(14.8, 7.5)); body.addLine(to: m(12.8, 16.2)); body.addLine(to: m(5.2, 16.2)); body.closeSubpath()
+        p.liquid(body, top: 0.7, bottom: 0.3)
+        let flaps = CGMutablePath()
+        flaps.move(to: m(3.2, 7.5)); flaps.addLine(to: m(5.6, 4.9)); flaps.addLine(to: m(9, 6.3)); flaps.addLine(to: m(12.4, 4.9))
+        flaps.addLine(to: m(14.8, 7.5)); flaps.closeSubpath()
+        p.liquid(flaps, top: 0.92, bottom: 0.6, rim: 1.5)
+    },
+    // A glass keyboard key with a bullet and a playful squiggle.
     "jot": Design(top: 0xFFC2E6, bottom: 0xD46BD8) { p in
-        p.glass(p.rr(18, 18, 68, 68, 12), fill: 0.65, width: 1.4, lift: true)
-        p.line(18, 31, 86, 31, hex(0xFFFFFF, 0.9), 1.2)
-        let ink = hex(0xA63DB3, 0.85), soft = hex(0xA63DB3, 0.45)
-        for (i, len) in [32, 26, 20].enumerated() {
-            let y = CGFloat(45 + i * 13)
-            p.fill(p.circle(31, y, 3.6), ink)
-            p.line(40, y, 40 + CGFloat(len), y, soft, 3)
+        p.liquid(p.rr(16, 20, 72, 66, 16), top: 0.6, bottom: 0.25)
+        p.liquid(p.rr(23, 24, 58, 50, 11), top: 0.85, bottom: 0.45, lift: false, rim: 1.3)
+        let ink = hex(0xA63DB3, 0.8), soft = hex(0xA63DB3, 0.5)
+        p.fill(p.circle(35, 49, 4), ink)
+        let w = CGMutablePath()
+        for k in 0...40 {
+            let t = CGFloat(k) / 40, x = 45 + 27 * t, y = 49 + sin(t * .pi * 3) * 3.2
+            if k == 0 { w.move(to: CGPoint(x: x, y: y)) } else { w.addLine(to: CGPoint(x: x, y: y)) }
         }
+        p.ctx.addPath(w); p.ctx.setStrokeColor(soft.cgColor); p.ctx.setLineWidth(3.2); p.ctx.setLineCap(.round); p.ctx.setLineJoin(.round); p.ctx.strokePath()
     },
 ]
 
