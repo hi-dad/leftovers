@@ -40,6 +40,33 @@ struct Pen {
         ctx.addPath(path); ctx.setStrokeColor(hex(0xFFFFFF, edge).cgColor); ctx.setLineWidth(width); ctx.strokePath()
     }
 
+    /// Thick "liquid glass": a gradient body, a soft shine top-left, a bright top rim fading
+    /// toward the bottom, and a faint glow along the bottom edge where light gathers.
+    func liquid(_ path: CGPath, tint: UInt32 = 0xFFFFFF, top: CGFloat = 0.78, bottom: CGFloat = 0.28, lift: Bool = true, rim: CGFloat = 1.6) {
+        let b = path.boundingBox
+        let space = CGColorSpace(name: CGColorSpace.sRGB)
+        func grad(_ cs: [NSColor], _ locs: [CGFloat]) -> CGGradient {
+            CGGradient(colorsSpace: space, colors: cs.map(\.cgColor) as CFArray, locations: locs)!
+        }
+        if lift {
+            ctx.saveGState(); shadow(true, blur: 4, dy: 2, alpha: 0.16)
+            ctx.addPath(path); ctx.setFillColor(hex(tint, 0.2).cgColor); ctx.fillPath(); ctx.restoreGState()
+        }
+        ctx.saveGState(); ctx.addPath(path); ctx.clip()
+        ctx.drawLinearGradient(grad([hex(tint, top), hex(tint, bottom)], [0, 1]),
+                               start: CGPoint(x: b.minX, y: b.minY), end: CGPoint(x: b.maxX * 0.3 + b.minX * 0.7, y: b.maxY), options: [])
+        ctx.drawLinearGradient(grad([hex(0xFFFFFF, 0), hex(0xFFFFFF, 0.38)], [0, 1]),
+                               start: CGPoint(x: b.midX, y: b.maxY - b.height * 0.22), end: CGPoint(x: b.midX, y: b.maxY), options: [])
+        ctx.addEllipse(in: CGRect(x: b.minX + b.width * 0.06, y: b.minY + b.height * 0.04, width: b.width * 0.5, height: b.height * 0.16))
+        ctx.setFillColor(hex(0xFFFFFF, 0.32).cgColor); ctx.fillPath()
+        ctx.restoreGState()
+        ctx.saveGState(); ctx.addPath(path); ctx.setLineWidth(rim); ctx.setLineJoin(.round)
+        ctx.replacePathWithStrokedPath(); ctx.clip()
+        ctx.drawLinearGradient(grad([hex(0xFFFFFF, 1), hex(0xFFFFFF, 0.35)], [0, 1]),
+                               start: CGPoint(x: b.minX, y: b.minY), end: CGPoint(x: b.maxX, y: b.maxY), options: [])
+        ctx.restoreGState()
+    }
+
     func fill(_ path: CGPath, _ c: NSColor, lift: Bool = false) {
         ctx.saveGState()
         if lift { shadow(true) }
@@ -75,6 +102,41 @@ struct Pen {
         let b = str.size()
         str.draw(at: CGPoint(x: center.x - b.width / 2, y: center.y - b.height / 2))
     }
+}
+
+func takeout(_ p: Pen, chop: UInt32, front: Bool, flaps: Bool, steam: Bool) {
+    func sticks() {
+        p.line(56, 56, 84, 14, hex(chop, 0.95), 3.4)
+        p.line(63, 58, 92, 20, hex(chop, 0.95), 3.4)
+    }
+    if !front { sticks() }
+    if steam {
+        for x in [CGFloat(40), 52, 64] {
+            p.ctx.move(to: CGPoint(x: x, y: 28)); p.ctx.addCurve(to: CGPoint(x: x, y: 12), control1: CGPoint(x: x - 5, y: 23), control2: CGPoint(x: x + 5, y: 17))
+            p.ctx.setStrokeColor(hex(0xFFFFFF, 0.85).cgColor); p.ctx.setLineWidth(2); p.ctx.setLineCap(.round); p.ctx.strokePath()
+        }
+    } else {
+        p.ctx.move(to: CGPoint(x: 36, y: 38)); p.ctx.addQuadCurve(to: CGPoint(x: 68, y: 38), control: CGPoint(x: 52, y: 12))
+        p.ctx.setStrokeColor(hex(0xFFFFFF, 0.95).cgColor); p.ctx.setLineWidth(2.2); p.ctx.strokePath()
+    }
+    let body = CGMutablePath()
+    body.move(to: CGPoint(x: 24, y: 44)); body.addLine(to: CGPoint(x: 80, y: 44))
+    body.addLine(to: CGPoint(x: 71, y: 88)); body.addLine(to: CGPoint(x: 33, y: 88)); body.closeSubpath()
+    p.liquid(body, top: 0.7, bottom: 0.3)
+    if flaps {
+        for (a, b, c) in [((22.0, 44.0), (34.0, 30.0), (52.0, 44.0)), ((52.0, 44.0), (70.0, 30.0), (82.0, 44.0))] {
+            let f = CGMutablePath(); f.move(to: CGPoint(x: a.0, y: a.1)); f.addLine(to: CGPoint(x: b.0, y: b.1)); f.addLine(to: CGPoint(x: c.0, y: c.1)); f.closeSubpath()
+            p.liquid(f, top: 0.85, bottom: 0.5, lift: false, rim: 1.4)
+        }
+    } else {
+        let band = CGMutablePath()
+        band.move(to: CGPoint(x: 20, y: 35)); band.addLine(to: CGPoint(x: 84, y: 35))
+        band.addLine(to: CGPoint(x: 80, y: 47)); band.addLine(to: CGPoint(x: 24, y: 47)); band.closeSubpath()
+        p.liquid(band, top: 0.9, bottom: 0.55, rim: 1.4)
+    }
+    // Soft folds down the front of the box.
+    p.line(44, 52, 46, 84, hex(0xFFFFFF, 0.45), 1); p.line(60, 52, 58, 84, hex(0xFFFFFF, 0.45), 1)
+    if front { sticks() }
 }
 
 struct Design { let top: UInt32; let bottom: UInt32; let draw: (Pen) -> Void }
@@ -142,15 +204,11 @@ let designs: [String: Design] = [
             p.line(70, 68 + dy, 94, 68 + endDy, hex(0xFFFFFF, 0.9), 1.2)
         }
     },
-    // A pile of copied cards with a count badge.
+    // A glass bubble with a count, like the menu bar icon.
     "copy-collector": Design(top: 0xA8F0C6, bottom: 0x3FBF9B) { p in
-        p.glass(p.rr(30, 16, 52, 40, 8), fill: 0.22, edge: 0.6)
-        p.glass(p.rr(24, 28, 56, 42, 8), fill: 0.38, edge: 0.75)
-        p.glass(p.rr(18, 42, 60, 44, 9), fill: 0.7, width: 1.4, lift: true)
-        let ink = hex(0x23997A, 0.55)
-        p.line(27, 55, 62, 55, ink, 3); p.line(27, 63, 56, 63, ink, 3); p.line(27, 71, 48, 71, ink, 3)
-        p.fill(p.circle(79, 44, 11), hex(0xFFFFFF), lift: true)
-        p.text("3", center: CGPoint(x: 79, y: 44), size: 14, hex(0x1F8F70))
+        p.liquid(p.circle(60, 44, 24), top: 0.45, bottom: 0.15, lift: false)
+        p.liquid(p.circle(48, 58, 30))
+        p.text("3", center: CGPoint(x: 48, y: 58), size: 34, hex(0x1F8F70, 0.85))
     },
     // Stacked screenshots, the front one with a little landscape.
     "shelfie": Design(top: 0x7FE0FF, bottom: 0x3B82F6) { p in
@@ -165,37 +223,41 @@ let designs: [String: Design] = [
         m.addLine(to: CGPoint(x: 66, y: 62)); m.addLine(to: CGPoint(x: 81, y: 79)); m.closeSubpath()
         p.fill(m, hex(0x2563EB, 0.55))
     },
-    // A frosted page in front of a warm sun.
+    // An open book in front of a warm sun.
     "paperlight": Design(top: 0xFFE0CC, bottom: 0xF49C8C) { p in
-        p.fill(p.circle(72, 32, 17), hex(0xFFE59A))
-        p.glass(p.rr(24, 18, 50, 70, 8), fill: 0.6, width: 1.4, lift: true)
-        let ink = hex(0xD9604E, 0.45)
-        for (i, len) in [34, 28, 32, 22, 26].enumerated() {
-            let y = CGFloat(34 + i * 9)
-            p.line(32, y, 32 + CGFloat(len), y, ink, 2.6)
+        p.fill(p.circle(52, 30, 15), hex(0xFFE59A))
+        func bez(_ a: CGPoint, _ b: CGPoint, _ c: CGPoint, _ d: CGPoint, _ t: CGFloat) -> CGPoint {
+            let u = 1 - t
+            return CGPoint(x: u*u*u*a.x + 3*u*u*t*b.x + 3*u*t*t*c.x + t*t*t*d.x,
+                           y: u*u*u*a.y + 3*u*u*t*b.y + 3*u*t*t*c.y + t*t*t*d.y)
+        }
+        for flip in [false, true] {
+            let x: (CGFloat) -> CGFloat = flip ? { 104 - $0 } : { $0 }
+            let top = [CGPoint(x: 52, y: 40), CGPoint(x: x(42), y: 32), CGPoint(x: x(26), y: 32), CGPoint(x: x(14), y: 38)]
+            let bottom = [CGPoint(x: 52, y: 86), CGPoint(x: x(42), y: 78), CGPoint(x: x(26), y: 76), CGPoint(x: x(14), y: 82)]
+            let page = CGMutablePath()
+            page.move(to: top[0]); page.addCurve(to: top[3], control1: top[1], control2: top[2])
+            page.addLine(to: bottom[3]); page.addCurve(to: bottom[0], control1: bottom[2], control2: bottom[1])
+            page.closeSubpath()
+            p.liquid(page, top: 0.8, bottom: 0.35)
+            // Text lines that bend with the page: blend between its top and bottom edges.
+            let ink = hex(0xD9604E, 0.42)
+            for (i, f) in [CGFloat(0.26), 0.42, 0.58].enumerated() {
+                let end: CGFloat = i == 2 ? 0.62 : 0.84
+                let line = CGMutablePath()
+                for k in 0...24 {
+                    let t = 0.14 + (end - 0.14) * CGFloat(k) / 24
+                    let pt = bez(top[0], top[1], top[2], top[3], t), pb = bez(bottom[0], bottom[1], bottom[2], bottom[3], t)
+                    let q = CGPoint(x: pt.x + (pb.x - pt.x) * f, y: pt.y + (pb.y - pt.y) * f)
+                    if k == 0 { line.move(to: q) } else { line.addLine(to: q) }
+                }
+                p.ctx.addPath(line); p.ctx.setStrokeColor(ink.cgColor); p.ctx.setLineWidth(2.2)
+                p.ctx.setLineCap(.round); p.ctx.setLineJoin(.round); p.ctx.strokePath()
+            }
         }
     },
     // A takeout box with chopsticks.
-    "leftovers": Design(top: 0xFF9E8F, bottom: 0xD9383F) { p in
-        // Chopsticks behind the box, so the glass frosts over them.
-        p.line(56, 54, 84, 14, hex(0xFFE2B8), 3.2)
-        p.line(63, 56, 92, 20, hex(0xFFE2B8), 3.2)
-        // Wire handle.
-        p.ctx.move(to: CGPoint(x: 36, y: 38)); p.ctx.addQuadCurve(to: CGPoint(x: 68, y: 38), control: CGPoint(x: 52, y: 12))
-        p.ctx.setStrokeColor(hex(0xFFFFFF, 0.9).cgColor); p.ctx.setLineWidth(2); p.ctx.strokePath()
-        // Box: tapered body with a folded top band.
-        let body = CGMutablePath()
-        body.move(to: CGPoint(x: 24, y: 42)); body.addLine(to: CGPoint(x: 80, y: 42))
-        body.addLine(to: CGPoint(x: 72, y: 87)); body.addLine(to: CGPoint(x: 32, y: 87)); body.closeSubpath()
-        p.glass(body, fill: 0.55, edge: 0.95, width: 1.5)
-        let band = CGMutablePath()
-        band.move(to: CGPoint(x: 20, y: 34)); band.addLine(to: CGPoint(x: 84, y: 34))
-        band.addLine(to: CGPoint(x: 80, y: 46)); band.addLine(to: CGPoint(x: 24, y: 46)); band.closeSubpath()
-        p.glass(band, fill: 0.75, edge: 0.95, width: 1.5)
-        // A little red seal on the front.
-        p.ctx.addPath(p.circle(52, 65, 7.5)); p.ctx.setStrokeColor(hex(0xC9303A, 0.7).cgColor); p.ctx.setLineWidth(1.8); p.ctx.strokePath()
-        p.fill(p.circle(52, 65, 3), hex(0xC9303A, 0.7))
-    },
+    "leftovers": Design(top: 0xFF9E8F, bottom: 0xD9383F) { p in takeout(p, chop: 0xFFFFFF, front: true, flaps: false, steam: false) },
     // A note with bullet points.
     "jot": Design(top: 0xFFC2E6, bottom: 0xD46BD8) { p in
         p.glass(p.rr(18, 18, 68, 68, 12), fill: 0.65, width: 1.4, lift: true)
