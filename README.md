@@ -1,5 +1,7 @@
 # Leftovers
 
+<img src="images/icon.png" alt="Leftovers app icon" width="128">
+
 A tiny Mac menu-bar app that spots things Claude left running and draining your battery, then stops them with one click.
 
 Its menu bar icon is a takeout box with chopsticks. A small **orange dot** means something needs a look; a **red dot** means something is stuck.
