@@ -4,7 +4,7 @@
 
 **A tiny Mac menu bar app that spots things Claude left running and draining your battery, and stops them in one click.**
 
-<img src="images/leftovers.gif" alt="Leftovers: the menu drops down from the takeout-box icon showing three things Claude left running, then three windows show it flagging something stuck, nudging about something idle, and its settings" width="720">
+<img src="images/leftovers.gif" alt="Leftovers: the menu drops down from the takeout-box icon showing three things Claude left running, then three windows show it flagging something stuck, nudging about something idle, and a list of everything it watches" width="720">
 
 ### [⬇️ Download Leftovers](https://github.com/hi-dad/leftovers/releases/latest/download/Leftovers.dmg)
 Free · macOS 14 or newer · needs the Claude desktop app · always the latest version
@@ -23,6 +23,7 @@ A takeout box appears in your menu bar. An **orange dot** means something's idle
 - Test websites nobody is using
 - iPhone simulators and Android emulators left on
 - Claude chats stuck in a loop, or too many loaded at once
+- Videos or animations left playing in Claude, or Claude busy while no chat is working
 - Spotlight or cloud sync busy with Claude's build folders
 
 Each one shows what it is, how long it's been running, its battery cost per hour, and what stopping it does.
