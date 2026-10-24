@@ -9,15 +9,10 @@
 ### [⬇️ Download Leftovers](https://github.com/hi-dad/leftovers/releases/latest/download/Leftovers.dmg)
 Free · macOS 14 or newer · needs the Claude desktop app · always the latest version
 
-⚠️ **The first time you open it, macOS blocks it.** That's normal for free apps outside the App Store. [See step 2 below](#install) for the one click that lets it open.
-
 ## Install
 
 1. Open **Leftovers.dmg** and drag Leftovers into **Applications**.
-2. Open it. When macOS says it can't verify the app, go to **System Settings → Privacy & Security** and click **Open Anyway** (once).
-
-   <img src="images/open-anyway.png" alt="System Settings, Privacy and Security: the line saying Leftovers was blocked to protect your Mac, with the Open Anyway button next to it" width="600">
-
+2. Open it, and click **Open** when macOS asks if you're sure. (It's signed and checked by Apple.)
 3. Allow notifications.
 
 A takeout box appears in your menu bar. An **orange dot** means something's idle; a **red dot** means something's stuck.

@@ -2,9 +2,7 @@ How to install Leftovers
 
 1. Drag Leftovers into the Applications folder (in this window).
 2. Open Leftovers from Applications.
-   macOS will say it "can't be opened" (it isn't from the App Store).
-   Open System Settings → Privacy & Security, scroll down, and click "Open Anyway".
-   You only need to do this once.
+   Click "Open" when macOS asks if you're sure.
 3. Click "Allow" when Leftovers asks to send notifications.
 
 A takeout box with chopsticks appears in your menu bar.
