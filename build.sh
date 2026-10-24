@@ -42,7 +42,10 @@ PLIST
 IDENTITY="${SIGN_IDENTITY:-}"
 [[ -z "$IDENTITY" && -f .signing-identity ]] && IDENTITY="$(head -1 .signing-identity)"
 [[ -z "$IDENTITY" ]] && IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/"/{print $2; exit}')"
-if [[ -n "$IDENTITY" ]] && codesign --force --sign "$IDENTITY" $APP 2>/dev/null; then
+# A Developer ID signature (GitHub's release builds) also gets the hardened runtime + timestamp Apple's notarization needs.
+EXTRA=()
+[[ "$IDENTITY" == "Developer ID Application"* ]] && EXTRA=(--options runtime --timestamp)
+if [[ -n "$IDENTITY" ]] && codesign --force --sign "$IDENTITY" $EXTRA $APP 2>/dev/null; then
   echo "Signed with: $IDENTITY"
 else
   codesign --force --sign - $APP

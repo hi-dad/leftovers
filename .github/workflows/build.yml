@@ -21,17 +21,59 @@ jobs:
       - name: Run tests
         run: swift test
 
+      # Your Developer ID certificate (from the repo's secrets) goes into a throwaway keychain for this build only.
+      - name: Load signing certificate
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          kc="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p "" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "" "$kc"
+          echo "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          echo "SIGN_IDENTITY=$(security find-identity -v -p codesigning "$kc" | awk -F'"' '/Developer ID Application/{print $2; exit}')" >> "$GITHUB_ENV"
+
       - name: Build Leftovers.dmg
         run: ./build.sh dist
+
+      # Apple checks the app and issues a ticket; stapling it to the DMG lets it open without warnings, even offline.
+      - name: Notarize with Apple
+        env:
+          NOTARY_KEY: ${{ secrets.NOTARY_KEY }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
+        run: |
+          dmg=dist/Leftovers.dmg
+          key="$RUNNER_TEMP/notary.p8"
+          echo "$NOTARY_KEY" | base64 --decode > "$key"
+          auth=(--key "$key" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID")
+          codesign --force --sign "$SIGN_IDENTITY" --timestamp "$dmg"
+          out="$(xcrun notarytool submit "$dmg" "${auth[@]}" --wait --timeout 30m --output-format json)"
+          echo "$out"
+          status="$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
+          if [[ "$status" != Accepted ]]; then
+            xcrun notarytool log "$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')" "${auth[@]}"
+            exit 1
+          fi
+          xcrun stapler staple "$dmg"
+          rm "$key"
 
       - name: Verify the download
         run: |
           hdiutil verify dist/Leftovers.dmg
+          xcrun stapler validate dist/Leftovers.dmg
+          spctl --assess --type open --context context:primary-signature -v dist/Leftovers.dmg
           mount="$(hdiutil attach -nobrowse -readonly dist/Leftovers.dmg | awk -F'\t' '/Volumes/{print $NF}')"
           app="$mount/Leftovers.app"
           test -x "$app/Contents/MacOS/Leftovers"
           plutil -lint "$app/Contents/Info.plist"
           codesign --verify --verbose "$app"
+          spctl --assess --type execute -vv "$app"   # Gatekeeper's verdict: must say "Notarized Developer ID"
           lipo "$app/Contents/MacOS/Leftovers" -verify_arch arm64 x86_64
           test -f "$mount/How to install.txt"
           hdiutil detach "$mount"
