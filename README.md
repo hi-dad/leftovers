@@ -4,7 +4,7 @@
 
 **A tiny Mac menu bar app that spots things Claude left running and draining your battery, and stops them in one click.**
 
-<img src="images/leftovers.gif" alt="Leftovers: the menu drops down from the takeout-box icon showing three things Claude left running, then three windows show it flagging something stuck, nudging about something idle, and a list of everything it watches" width="720">
+<img src="images/leftovers.gif" alt="Leftovers: Claude builds and tests an app, then the chat is closed but a test website, an iPhone simulator, a looping script and a stuck video export keep running and drain the battery; Leftovers flags them and stops each one in a click, then lists everything it watches" width="720">
 
 ### [⬇️ Download Leftovers](https://github.com/hi-dad/leftovers/releases/latest/download/Leftovers.dmg)
 Free · macOS 14 or newer · needs the Claude desktop app · always the latest version

@@ -1,0 +1,476 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Leftovers ad</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1200px;height:675px;overflow:hidden;background:#000;font-family:-apple-system,"SF Pro Text","Helvetica Neue",sans-serif;-webkit-font-smoothing:antialiased}
+#stage{position:relative;width:1200px;height:675px;overflow:hidden;
+  background:radial-gradient(900px 500px at 12% 8%,#ffe3dc 0%,transparent 60%),radial-gradient(700px 500px at 92% 100%,#b8302a 0%,transparent 70%),linear-gradient(160deg,#ffc2b8 0%,#f27a6e 55%,#d9473f 100%)}
+.abs{position:absolute}
+#menubar{left:0;top:0;width:100%;height:26px;background:rgba(255,255,255,.3);backdrop-filter:blur(10px);display:flex;align-items:center;padding:0 16px;gap:18px;font-size:13px;color:#3a1210;font-weight:500;z-index:60}
+#menubar .r{margin-left:auto;display:flex;gap:14px;align-items:center}
+#tk{width:30px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center}
+#batt{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+#caption{left:50%;top:588px;transform:translateX(-50%);padding:16px 30px;border-radius:18px;background:rgba(45,14,12,.92);color:#fff;font-size:31px;font-weight:700;letter-spacing:-.3px;white-space:nowrap;box-shadow:0 14px 40px rgba(60,0,0,.45),0 0 0 1.5px rgba(255,150,130,.55);z-index:70;display:flex;align-items:center;gap:14px}
+#caption .bullet{width:12px;height:12px;border-radius:6px;background:#ff8a7a;box-shadow:0 0 12px #ff8a7a;flex:none}
+.win{background:#fff;border-radius:12px;box-shadow:0 24px 60px rgba(60,0,0,.35),0 0 0 1px rgba(0,0,0,.08);overflow:hidden}
+.bar{height:38px;background:#eef0f5;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #dde0ea}
+.bar i{width:12px;height:12px;border-radius:6px;display:block}
+.bar .t{margin-left:auto;margin-right:auto;font-size:13px;font-weight:600;color:#333;padding-right:50px}
+#claude{background:#262624;box-shadow:0 24px 60px rgba(60,0,0,.45),0 0 0 1px rgba(255,255,255,.1)}
+#claude .cbar{height:44px;display:flex;align-items:center;gap:8px;padding:0 14px}
+#claude .cbar i{width:12px;height:12px;border-radius:6px;display:block}
+#claude .cbar svg{margin-left:14px}
+#claude .cbar .t{margin-left:auto;margin-right:auto;padding-right:120px;font-size:13px;font-weight:600;color:#e8e6e3}
+#side{position:absolute;left:0;top:44px;bottom:0;width:176px;background:#1f1e1d;padding:8px 10px}
+#side div{display:flex;align-items:center;gap:11px;height:36px;padding:0 8px;font-size:15px;color:#e8e6e3;border-radius:8px}
+#side div svg{flex:none}
+#side .rec{font-size:11.5px;font-weight:700;color:#8f8d88;height:28px;margin-top:10px}
+#side .on{background:#34332f}
+#chat{position:absolute;left:176px;right:0;top:44px;padding:24px 24px}
+.you{margin-left:auto;width:max-content;max-width:300px;background:#3a3935;border-radius:16px;padding:11px 15px;font-size:15.5px;line-height:1.35;color:#f0eee9;margin-bottom:20px}
+.who{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#e8e6e3;margin-bottom:10px}
+.who b{width:22px;height:22px;border-radius:11px;background:#d97757;display:block}
+.step{display:flex;align-items:center;gap:11px;font-size:15.5px;color:#d6d3cc;height:36px;white-space:nowrap}
+.step .ic{width:20px;height:20px;flex:none;position:relative}
+.spin{width:20px;height:20px;border-radius:10px;border:2.5px solid #4a4843;border-top-color:#d97757}
+.chk{width:20px;height:20px;border-radius:10px;background:#34c759;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+#s4{font-weight:700;color:#f5f3ee;margin-top:10px}
+#input{position:absolute;left:196px;right:20px;bottom:20px;height:50px;border-radius:14px;background:#30302e;border:1px solid #45443f;font-size:15px;color:#8f8d88;display:flex;align-items:center;padding-left:16px}
+#term{background:#1c1c1e}
+#term .bar{background:#2c2c2e;border-bottom-color:#111}
+#term .bar .t{color:#ddd}
+#tlog{padding:10px 14px;font:12.5px/1.6 Menlo,monospace;color:#d6d6d6;white-space:pre}
+#tlog .g{color:#5fd068}
+#tlog .d{color:#8a8a8f}
+#exp .body{padding:16px 18px;font-size:15px;color:#222}
+#exp .pb{height:8px;border-radius:4px;background:#e6e8ee;margin:12px 0 8px;overflow:hidden}
+#exp .pb i{display:block;height:100%;width:0;background:#3b82f6;border-radius:4px}
+#exp .sm{font-size:13px;color:#777}
+#expStart{font-size:13px;color:#888;margin-top:5px;display:flex;align-items:center;gap:6px}
+#expStart.late{color:#d93025;font-weight:600}
+#loop{background:#1c1c1e}
+#loop .bar{background:#2c2c2e;border-bottom-color:#111}
+#loop .bar .t{color:#ddd}
+#llog{padding:10px 14px;font:12.5px/1.6 Menlo,monospace;color:#e6e6e6;white-space:pre}
+#llog .o{color:#f5a623}
+#llog .d{color:#8a8a8f}
+#sim{width:206px;height:424px;border-radius:38px;background:#111;padding:9px;box-shadow:0 24px 60px rgba(60,0,0,.4),0 0 0 2px #3a3a3c}
+#scr{width:100%;height:100%;border-radius:30px;background:#fff8f0;overflow:hidden;position:relative}
+#scr .isl{position:absolute;left:50%;top:9px;width:64px;height:19px;margin-left:-32px;border-radius:10px;background:#000}
+#scr .sb{font-size:11px;font-weight:700;padding:11px 20px 0;color:#222}
+#scr h3{font-size:22px;font-weight:800;color:#222;padding:20px 16px 8px}
+#hero{margin:0 12px 10px;height:84px;border-radius:16px;background:linear-gradient(120deg,#ff9a8a,#ffcf70,#8fd3ff,#c9a2ff,#ff9a8a);background-size:400% 100%;display:flex;align-items:center;gap:10px;padding:0 12px;color:#fff;font-size:14px;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.25);overflow:hidden}
+#hero small{display:block;font-size:11px;font-weight:600;opacity:.9}
+#heroE{font-size:40px;display:block;width:48px;text-align:center}
+#rl{height:228px;overflow:hidden}
+.card{margin:0 12px 10px;height:68px;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.08);display:flex;align-items:center;gap:10px;padding:0 10px;font-size:13px;color:#222;font-weight:600}
+.card span{width:48px;height:48px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.card small{display:block;font-weight:500;color:#999;font-size:11px;margin-top:2px}
+#scrOff{position:absolute;inset:0;background:#000;opacity:0}
+#simLabel{font-size:12px;font-weight:600;color:rgba(58,18,16,.8);text-align:center;width:206px}
+.run{padding:6px 13px;border-radius:999px;font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:7px;z-index:40;white-space:nowrap;box-shadow:0 6px 18px rgba(60,0,0,.35)}
+.run i{width:8px;height:8px;border-radius:4px;background:#fff;display:block}
+.run.rd{background:#e5352b}.run.og{background:#f07a12}
+#skip{inset:0;z-index:58;background:rgba(40,8,6,.55);backdrop-filter:blur(6px);display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff}
+#skip .clock{width:110px;height:110px;border-radius:55px;background:#fff;position:relative;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+#skip .clock i{position:absolute;left:53px;top:16px;width:4px;height:39px;border-radius:2px;background:#2b0d0b;transform-origin:2px 39px}
+#skip .clock b{position:absolute;left:53px;top:27px;width:4px;height:28px;border-radius:2px;background:#e5352b;transform-origin:2px 28px}
+#skip .later{font-size:46px;font-weight:800;margin-top:20px;letter-spacing:-1px}
+#bigBatt{margin-top:18px;display:flex;align-items:center;gap:14px;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums}
+#bigBatt .shell{width:120px;height:50px;border-radius:12px;border:3.5px solid #fff;padding:4px;position:relative}
+#bigBatt .shell:after{content:"";position:absolute;right:-11px;top:14px;width:6px;height:16px;border-radius:0 4px 4px 0;background:#fff}
+#bigBatt .fill{height:100%;border-radius:6px;background:#34c759}
+#note{left:832px;top:34px;width:352px;padding:12px 14px;border-radius:16px;background:rgba(246,244,244,.97);box-shadow:0 18px 44px rgba(60,0,0,.35),0 0 0 1px rgba(0,0,0,.08);display:flex;gap:12px;z-index:66}
+#note img{width:40px;height:40px;flex:none}
+#note b{display:block;font-size:14px;color:#1d1d1f}
+#note p{font-size:13px;color:#444;line-height:1.35;margin-top:2px}
+#note .now{position:absolute;right:14px;top:12px;font-size:12px;color:#888}
+#menu{left:742px;top:31px;width:440px;padding:12px;border-radius:14px;background:rgba(36,36,38,.98);box-shadow:0 22px 60px rgba(40,0,0,.55),0 0 0 1px rgba(255,255,255,.08);color:#eee;z-index:65;transform-origin:85% 0}
+#menu .hd{font-size:17px;font-weight:700;padding:2px 4px 10px;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:10px}
+#banner{display:flex;gap:12px;align-items:center;padding:11px 14px;border-radius:11px;margin-bottom:9px}
+#banner .bi{width:26px;height:26px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;color:#fff;flex:none}
+#banner b{display:block;font-size:16px}
+#banner p{font-size:12.5px;color:#bbb;margin-top:1px}
+.row{position:relative;background:rgba(255,255,255,.06);border-radius:11px;padding:9px 14px 8px 44px;margin-bottom:7px;height:92px}
+.row .ri{position:absolute;left:13px;top:10px;width:20px;height:20px}
+.row .tt{font-size:14.5px;font-weight:700;color:#f2f2f2;padding-right:60px}
+.row .st{font-size:13px;margin-top:2px}
+.row .sf{font-size:12.5px;color:#a9a9ad;margin-top:2px}
+.row .sf em{font-style:normal;color:#d0d0d4}
+.row .ac{font-size:13.5px;color:#c9c9cd;margin-top:4px;display:flex;gap:6px;font-weight:500}
+.row .ac span{padding:1px 6px;margin-left:-6px;margin-right:8px;border-radius:5px}
+.row .ac span.press{background:rgba(255,255,255,.22);color:#fff}
+.row .ok{font-size:13.5px;color:#34c759;margin-top:4px;font-weight:700;display:none}
+.row .bd{position:absolute;right:12px;top:8px;padding:2px 9px;border-radius:9px;font-size:13.5px;font-weight:700}
+.bd.o{background:rgba(255,140,40,.22);color:#ff9f43}
+#feat .pill{margin-top:22px}
+.bd.g{background:rgba(255,255,255,.12);color:#ccc}
+.red{color:#ff5a4f}.org{color:#ff9f43}
+#menu .ft{display:flex;font-size:12.5px;color:#9a9a9e;padding:4px 4px 0;gap:16px}
+#menu .ft span:first-child{margin-right:auto}
+#cursor{width:24px;height:30px;z-index:90}
+#feat{inset:0;z-index:119;color:#fff;background:radial-gradient(800px 500px at 30% 40%,#ff9a8a 0%,#e8564a 70%,#b8302a 100%)}
+#feat .lg{position:absolute;left:60px;top:0;bottom:0;width:480px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+#feat .lg img{width:150px;height:150px;filter:drop-shadow(0 18px 30px rgba(0,0,0,.3))}
+#feat .lg .big{font-size:72px}
+#feat ul{position:absolute;left:640px;top:52px;width:480px;list-style:none}
+#feat li{height:52px;margin-bottom:11px;border-radius:26px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);display:flex;align-items:center;gap:16px;padding-left:7px;font-size:24px;font-weight:700;letter-spacing:-.3px}
+#feat li b{width:40px;height:40px;border-radius:20px;background:#e5352b;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 10px rgba(120,0,0,.3)}
+#title{inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:120;
+  background:radial-gradient(800px 500px at 50% 35%,#ff9a8a 0%,#e8564a 70%,#b8302a 100%)}
+#title img{width:150px;height:150px;filter:drop-shadow(0 18px 30px rgba(0,0,0,.3))}
+.big{font-size:80px;font-weight:800;letter-spacing:-2px;margin-top:14px}
+.tag{font-size:28px;font-weight:500;opacity:.92;margin-top:6px}
+.pill{display:inline-block;margin-top:22px;padding:9px 20px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);font-size:18px;font-weight:600}
+</style></head>
+<body>
+<div id="stage">
+  <div id="menubar" class="abs"><b>&#63743;</b><b id="appName">Claude</b><span>File</span><span>Edit</span><span>View</span><span>Window</span>
+    <span class="r">
+      <span id="tk"><svg width="22" height="18" viewBox="0 0 22 18"><path d="M3.2 7.5L5.2 16.2H12.8L14.8 7.5ZM3.2 7.5L5.6 4.9L9 6.3L12.4 4.9L14.8 7.5M10.6 5.6L15.6 .8M12 6L17 2" fill="none" stroke="#3a1210" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round"/><circle id="tkDot" cx="18.5" cy="14.9" r="3.1" fill="#ff3b30" opacity="0"/></svg></span>
+      <svg width="16" height="12" viewBox="0 0 16 12"><path d="M1 4.2a10 10 0 0 1 14 0M3.4 6.7a6.5 6.5 0 0 1 9.2 0M5.8 9.1a3 3 0 0 1 4.4 0" fill="none" stroke="#3a1210" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span id="batt"><span id="battPct">82%</span><svg width="25" height="12" viewBox="0 0 25 12"><rect x=".7" y=".7" width="21" height="10.6" rx="3" fill="none" stroke="#3a1210" stroke-width="1.2"/><rect id="battFill" x="2.5" y="2.5" width="14" height="7" rx="1.5" fill="#3a1210"/><rect x="23" y="4" width="1.6" height="4" rx=".8" fill="#3a1210"/></svg></span>
+      <span id="clock">Tue 2:10 PM</span></span></div>
+
+  <div id="claude" class="abs win" style="left:30px;top:46px;width:580px;height:510px">
+    <div class="cbar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2.5"/><path d="M7 7v6"/></svg><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5l-5 5 5 5"/></svg><span class="t">Claude</span></div>
+    <div id="side">
+      <div><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4v12M4 10h12"/></svg>New</div>
+      <div><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/></svg>Search</div>
+      <div><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="8" height="11" rx="2"/><path d="M8 6V4.5a1.5 1.5 0 0 1 1.5-1.5H15a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 15 15h-4"/></svg>Artifacts</div>
+      <div><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 2"/></svg>Scheduled</div>
+      <div><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#e8e6e3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="15" height="10.5" rx="2"/><path d="M7 6V4.5h6V6"/></svg>Customize</div>
+      <div class="rec">Recents</div>
+      <div class="on">Recipe app</div>
+      <div style="color:#a9a6a0">Trip packing list</div>
+    </div>
+    <div id="chat">
+      <div class="you" id="you">Build my recipe app and test it on an iPhone.</div>
+      <div class="who" id="who"><b></b>Claude</div>
+      <div class="step" id="s0"><span class="ic"></span>Started a test website at localhost:3000</div>
+      <div class="step" id="s1"><span class="ic"></span>Opened the app in an iPhone simulator</div>
+      <div class="step" id="s2"><span class="ic"></span>Resizing the recipe photos</div>
+      <div class="step" id="s3"><span class="ic"></span>Exporting a demo video of it</div>
+      <div class="step" id="s4">All done! Your app works on iPhone. 🎉</div>
+    </div>
+    <div id="input">Reply to Claude…</div>
+  </div>
+
+  <div id="term" class="abs win" style="left:630px;top:46px;width:310px;height:160px">
+    <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="t">recipe-app — npm run dev</span></div>
+    <div id="tlog"></div>
+  </div>
+
+  <div id="exp" class="abs win" style="left:630px;top:218px;width:310px;height:152px">
+    <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="t">Export</span></div>
+    <div class="body">🎬 Exporting <b>demo.mp4</b><div class="pb"><i id="expBar"></i></div><div class="sm" id="expPct">0% · about 3 minutes left</div><div id="expStart">Started just now</div></div>
+  </div>
+
+  <div id="loop" class="abs win" style="left:630px;top:382px;width:310px;height:160px">
+    <div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span class="t">python resize_photos.py</span></div>
+    <div id="llog"></div>
+  </div>
+
+  <div id="simWrap" class="abs" style="left:966px;top:56px">
+    <div id="simLabel">iPhone 17 Pro</div>
+    <div id="sim" style="margin-top:6px"><div id="scr"><div class="isl"></div><div class="sb">9:41</div><h3>Recipes</h3>
+      <div id="hero"><span id="heroE">🍝</span><div>Recipe of the day<small id="heroN">Garlic pasta</small></div></div>
+      <div id="rl"><div id="rlIn"><div class="card"><span style="background:#ffe6cc">🍝</span><div>Garlic pasta<small>20 min</small></div></div>
+      <div class="card"><span style="background:#dff5dc">🥗</span><div>Green salad<small>10 min</small></div></div>
+      <div class="card"><span style="background:#ffe0ea">🍰</span><div>Lemon cake<small>45 min</small></div></div>
+      <div class="card"><span style="background:#e2ecff">🍲</span><div>Tomato soup<small>30 min</small></div></div><div class="card"><span style="background:#ffe6cc">🍝</span><div>Garlic pasta<small>20 min</small></div></div>
+      <div class="card"><span style="background:#dff5dc">🥗</span><div>Green salad<small>10 min</small></div></div>
+      <div class="card"><span style="background:#ffe0ea">🍰</span><div>Lemon cake<small>45 min</small></div></div>
+      <div class="card"><span style="background:#e2ecff">🍲</span><div>Tomato soup<small>30 min</small></div></div></div></div>
+      <div id="scrOff"></div></div></div>
+  </div>
+
+  <div id="runT" class="abs run og"><i></i>idle · &lt;1%/h</div>
+  <div id="runE" class="abs run rd"><i></i>stuck · 8%/h</div>
+  <div id="runL" class="abs run rd"><i></i>looping · 3%/h</div>
+  <div id="runS" class="abs run og"><i></i>animating · 4%/h</div>
+
+  <div id="skip" class="abs"><div class="clock"><i id="hMin"></i><b id="hHr"></b></div><div class="later">3 hours later…</div>
+    <div id="bigBatt"><div class="shell"><div class="fill" id="bigFill"></div></div><span id="bigPct">82%</span></div></div>
+
+  <div id="note" class="abs"><img src="../../images/icon.png"><div><b>iPhone simulator left on</b><p>Animating for 3 h with nobody watching.<br>About 4% of your battery an hour.</p></div><span class="now">now</span></div>
+
+  <div id="menu" class="abs">
+    <div class="hd">Leftovers</div>
+    <div id="banner"><div class="bi" id="bIc">!</div><div><b id="bTitle">4 things need a look</b><p id="bSub">Claude left something running that's wasting battery.</p></div></div>
+    <div class="row" id="r1">
+      <svg class="ri" viewBox="0 0 20 20"><path d="M16 8a6.5 6.5 0 0 0-11.6-2.4M4 12a6.5 6.5 0 0 0 11.6 2.4M4 2.5v3.6h3.6M16 17.5v-3.6h-3.6" fill="none" stroke="#ff5a4f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="tt">Video export stuck in “Recipe app”</div>
+      <div class="st red">Running 3 h · last change 3 h ago</div>
+      <div class="sf"><em>Safe to stop:</em> it isn't making progress</div>
+      <div class="ac"><span id="a1">Stop</span><span>Ignore</span></div><div class="ok">✓ Stopped</div>
+      <div class="bd o">8%/h</div></div>
+    <div class="row" id="r2">
+      <svg class="ri" viewBox="0 0 20 20"><rect x="2" y="3.5" width="16" height="13" rx="2.5" fill="none" stroke="#ff5a4f" stroke-width="1.7"/><path d="M5.5 8l2.5 2-2.5 2M10 12.5h4" fill="none" stroke="#ff5a4f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="tt">Python script stuck in a loop</div>
+      <div class="st red">Running 3 h · 48,000+ retries of one photo</div>
+      <div class="sf"><em>Safe to stop:</em> it keeps hitting the same error</div>
+      <div class="ac"><span id="a2">Stop</span><span>Ignore</span></div><div class="ok">✓ Stopped</div>
+      <div class="bd o">3%/h</div></div>
+    <div class="row" id="r3">
+      <svg class="ri" viewBox="0 0 20 20"><rect x="5" y="1.5" width="10" height="17" rx="2.5" fill="none" stroke="#ff9f43" stroke-width="1.8"/><path d="M8.5 4h3" stroke="#ff9f43" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <div class="tt">iPhone simulator running RecipeApp</div>
+      <div class="st org">Running 3 h · animating, nobody watching</div>
+      <div class="sf"><em>Safe to shut down:</em> your app and project aren't touched</div>
+      <div class="ac"><span id="a3">Shut down</span><span>Ignore</span></div><div class="ok">✓ Shut down</div>
+      <div class="bd o">4%/h</div></div>
+    <div class="row" id="r4">
+      <svg class="ri" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#ff9f43" stroke-width="1.7"/><path d="M2 10h16M10 2c-3 3-3 13 0 16M10 2c3 3 3 13 0 16" fill="none" stroke="#ff9f43" stroke-width="1.5"/></svg>
+      <div class="tt">Test website for recipe-app</div>
+      <div class="st org">Running 3 h · last visit 3 h ago</div>
+      <div class="sf"><em>Stopping:</em> closes the test website until it's restarted</div>
+      <div class="ac"><span>Open</span><span id="a4">Stop</span><span>Ignore</span></div><div class="ok">✓ Stopped</div>
+      <div class="bd g">&lt;1%/h</div></div>
+    <div class="ft"><span>Checked just now</span><span>Check now</span><span>Quit</span></div>
+  </div>
+
+  <div id="caption" class="abs"><span class="bullet"></span><span id="capText"></span></div>
+
+  <svg id="cursor" class="abs" viewBox="0 0 24 30"><path d="M2 2v22l6-6 4 9 4-2-4-8.5h8.5z" fill="#111" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>
+
+  <div id="feat" class="abs"><div class="lg"><img src="../../images/icon.png"><div class="big">Leftovers</div><div class="tag">It keeps an eye on all of this.</div><div class="pill">Free for Mac · github.com/hi-dad/leftovers</div></div><ul id="fl"><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="15" height="12" rx="2"/><path d="M6 8l2.5 2L6 12"/></svg></b>Scripts left running</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c-2.8 3-2.8 12 0 15M10 2.5c2.8 3 2.8 12 0 15"/></svg></b>Test websites</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6.5 6.5 0 0 0-11.6-2.4M4 12a6.5 6.5 0 0 0 11.6 2.4M4 2.5v3.6h3.6M16 17.5v-3.6h-3.6"/></svg></b>Chats stuck in a loop</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10v7H7l-3 2.5V11H3zM9 13.5h4.5l2.5 2V13.5h1V7h-2"/></svg></b>Too many chats loaded</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="2" width="9" height="16" rx="2.2"/><path d="M8.5 4.5h3"/></svg></b>Simulators &amp; emulators</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="13" rx="2.5"/><path d="M8.5 7.5l4 2.5-4 2.5z" fill="#fff"/></svg></b>Videos &amp; animations</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="10" height="10" rx="2"/><path d="M8 2v3M12 2v3M8 15v3M12 15v3M2 8h3M2 12h3M15 8h3M15 12h3"/></svg></b>Claude busy for nothing</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.5 12.5l5 5"/></svg></b>Spotlight re-indexing</li><li><b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 15H5a3.5 3.5 0 0 1-.5-7A5 5 0 0 1 14 7a3.5 3.5 0 0 1 1 7h-1M10 16.5V10M7.5 12.5L10 10l2.5 2.5"/></svg></b>Cloud sync re-uploads</li></ul></div>
+
+  <div id="title" class="abs"><img src="../../images/icon.png"><div class="big">Leftovers</div><div class="tag">Spot what Claude left running.</div></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const clamp = (x) => Math.max(0, Math.min(1, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const io = (x) => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const out = (x) => 1 - Math.pow(1 - x, 3);
+const back = (x) => { const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+const lerp = (a, b, x) => a + (b - a) * x;
+const win = (t, a, b, d = .35) => Math.min(seg(t, a, a + d), 1 - seg(t, b - d, b));
+const css = (el, o) => Object.assign(el.style, o);
+
+const DUR = 37;
+const caps = [
+  [3.2, 7.4, 'You ask Claude to build and test your app.'],
+  [7.4, 9.8, 'Claude says it’s all done…'],
+  [9.8, 13.2, '…but leaves things running after you close it.'],
+  [13.2, 16.2, 'They quietly drain your battery.'],
+  [16.2, 19.4, 'Leftovers spots what was left on.'],
+  [19.4, 23.4, 'See each one and what it costs per hour.'],
+  [23.4, 27.6, 'Stop it in one click.'],
+  [27.6, 29.8, 'Nothing stops without your click.'],
+];
+const F = 29.8;                           // the list of everything it watches
+const CLOSE = 10.3;                       // the Claude chat window is closed
+const SKIP_A = 13.2, SKIP_B = 16.0;       // "3 hours later"
+const OPEN = 19.6, SHUT = 29.4;           // the Leftovers menu opens / closes
+const S1 = 24.05, S2 = 24.85, S3 = 25.65, S4 = 26.45; // export, python loop, simulator, test website stopped
+const clicks = [CLOSE, OPEN, S1, S2, S3, S4, SHUT];
+// when each step in the chat starts (spinner) and finishes (check)
+const steps = [[4.0, 4.7], [4.8, 5.5], [5.6, 6.3], [6.4, 7.2]];
+const pops = { term: 4.3, simWrap: 5.1, loop: 5.9, exp: 6.7 };
+const EXP_A = 6.8, EXP_B = 8.6;          // the export climbs to 63%, then never moves again
+
+function battery(t) {
+  if (t < CLOSE) return 82;
+  if (t < SKIP_A) return Math.round(lerp(82, 80, seg(t, CLOSE, SKIP_A)));
+  return Math.round(lerp(80, 23, io(seg(t, SKIP_A + .3, SKIP_B - .4))));
+}
+// minutes since 2:10 PM, when everything started
+const since = (t) => Math.round(184 * io(seg(t, SKIP_A + .3, SKIP_B - .4))) + (t > SKIP_B ? Math.floor((t - SKIP_B) / 6) : 0);
+// the python script retries the same photo, faster than you can read
+function retries(t) {
+  const before = Math.max(0, Math.floor((t - 6.0) * 7));
+  if (t < SKIP_A) return before;
+  const atSkip = Math.floor((SKIP_A - 6.0) * 7);
+  return Math.round(lerp(atSkip, 48200, io(seg(t, SKIP_A + .3, SKIP_B - .4)))) + (t > SKIP_B ? Math.floor((t - SKIP_B) * 7) : 0);
+}
+function clockText(t) {
+  const m = 14 * 60 + 10 + since(t);
+  const h = Math.floor(m / 60) % 12 || 12;
+  return `Tue ${h}:${String(m % 60).padStart(2, '0')} PM`;
+}
+
+const logLines = ['<span class="g">✓</span> Ready on http://localhost:3000', '<span class="d">GET</span> /recipes 200 <span class="d">in 9ms</span>',
+  '<span class="d">GET</span> /recipes/12 200 <span class="d">in 6ms</span>', '<span class="g">✓</span> Compiled in 140ms', '<span class="d">GET</span> /api/search 200 <span class="d">in 11ms</span>',
+  '<span class="d">GET</span> /favicon.ico 200 <span class="d">in 2ms</span>', '<span class="d">○</span> watching for changes…'];
+
+let C = null;
+function centers() {
+  if (C) return C;
+  const m = $('menu'); const was = m.style.display; m.style.display = 'block';
+  const r = (el) => { const b = el.getBoundingClientRect(); return [b.left + b.width / 2, b.top + b.height / 2]; };
+  C = { tk: r($('tk')), a1: r($('a1')), a2: r($('a2')), a3: r($('a3')), a4: r($('a4')), close: [30 + 20, 46 + 22] };
+  m.style.display = was;
+  return C;
+}
+
+function path(t, k) {
+  if (t <= k[0][0]) return [k[0][1], k[0][2]];
+  for (let i = 1; i < k.length; i++) if (t <= k[i][0]) {
+    const x = io(seg(t, k[i - 1][0], k[i][0]));
+    return [lerp(k[i - 1][1], k[i][1], x), lerp(k[i - 1][2], k[i][2], x)];
+  }
+  const l = k[k.length - 1]; return [l[1], l[2]];
+}
+
+function render(t) {
+  const c = centers();
+  // title & the closing list of everything it watches
+  css($('title'), { opacity: 1 - seg(t, 2.6, 3.1), display: t < 3.1 ? 'flex' : 'none' });
+  const ti = back(seg(t, .1, .8));
+  $('title').querySelector('img').style.transform = `scale(${ti}) rotate(${(1 - ti) * -10}deg)`;
+  $('title').querySelector('.big').style.cssText = `opacity:${seg(t, .5, 1)};transform:translateY(${(1 - out(seg(t, .5, 1))) * 20}px)`;
+  $('title').querySelector('.tag').style.cssText = `opacity:${seg(t, .9, 1.4)}`;
+  css($('feat'), { opacity: seg(t, F, F + .5), display: t > F ? 'block' : 'none' });
+  const fi = back(seg(t, F + .2, F + .9));
+  $('feat').querySelector('img').style.transform = `scale(${fi})`;
+  $('feat').querySelector('.big').style.opacity = seg(t, F + .5, F + 1);
+  $('feat').querySelector('.tag').style.opacity = seg(t, F + .9, F + 1.4);
+  $('feat').querySelector('.pill').style.cssText = `opacity:${seg(t, F + 1.5, F + 2)};transform:translateY(${(1 - out(seg(t, F + 1.5, F + 2))) * 14}px)`;
+  [...$('fl').children].forEach((el, i) => { const a = F + 1.2 + i * .32, x = seg(t, a, a + .4);
+    el.style.cssText = `opacity:${x};transform:translateY(${(1 - back(x)) * -22}px)`; });
+
+  // caption: lower third, slides up as each one starts
+  const cap = caps.find(([a, b]) => t >= a && t < b);
+  if (cap) {
+    $('capText').textContent = cap[2];
+    const ci = out(seg(t, cap[0], cap[0] + .35));
+    css($('caption'), { opacity: win(t, cap[0], cap[1], .25), display: 'flex', transform: `translateX(-50%) translateY(${(1 - ci) * 18}px) scale(${.96 + .04 * ci})` });
+  } else css($('caption'), { display: 'none' });
+
+  // the chat: your message, then Claude's steps (spinner, then a check), then "All done"
+  css($('you'), { opacity: seg(t, 3.3, 3.6), transform: `translateY(${(1 - out(seg(t, 3.3, 3.6))) * 10}px)` });
+  $('who').style.opacity = seg(t, 3.8, 4.0);
+  steps.forEach(([a, b], i) => {
+    const el = $('s' + i);
+    css(el, { opacity: seg(t, a, a + .25), transform: `translateX(${(1 - out(seg(t, a, a + .3))) * -10}px)` });
+    el.querySelector('.ic').innerHTML = t < b ? `<div class="spin" style="transform:rotate(${t * 540}deg)"></div>` : '<div class="chk">✓</div>';
+  });
+  css($('s4'), { opacity: seg(t, 7.6, 7.9), transform: `translateY(${(1 - out(seg(t, 7.6, 7.9))) * 8}px)` });
+
+  // closing the Claude window
+  const cl = seg(t, CLOSE, CLOSE + .3);
+  css($('claude'), { opacity: 1 - cl, transform: `scale(${1 - .05 * cl})`, display: cl < 1 ? 'block' : 'none' });
+  $('appName').textContent = t < CLOSE ? 'Claude' : 'Finder';
+
+  // the things Claude started pop open, and close one by one when stopped
+  const stopAt = { exp: S1, loop: S2, simWrap: S3, term: S4 };
+  // when Leftovers opens, the leftovers slide left so they sit beside its menu
+  const sl = io(seg(t, OPEN + .1, OPEN + .8));
+  const home = { term: [630, 46], exp: [630, 218], loop: [630, 382], simWrap: [966, 56] }, dest = { term: [40, 46], exp: [40, 218], loop: [40, 382], simWrap: [390, 56] };
+  const at = (k) => [lerp(home[k][0], dest[k][0], sl), lerp(home[k][1], dest[k][1], sl)];
+  for (const k of ['term', 'simWrap', 'loop', 'exp']) {
+    const p = back(seg(t, pops[k], pops[k] + .35)), gone = seg(t, stopAt[k] + .15, stopAt[k] + .5);
+    css($(k), { left: at(k)[0] + 'px', top: at(k)[1] + 'px', opacity: Math.min(1, seg(t, pops[k], pops[k] + .2)) * (1 - gone), transform: `scale(${Math.min(1.04, .85 + .15 * p) - .1 * gone})`, display: t > pops[k] && gone < 1 ? 'block' : 'none', zIndex: { term: 11, exp: 12, loop: 13, simWrap: 14 }[k] });
+  }
+  $('scrOff').style.opacity = seg(t, S3, S3 + .15);
+  const late = t > SKIP_A + .3;
+  // the simulator never stops animating: a color-shifting banner, a bouncing dish, a list that scrolls forever
+  const dishes = [['🍝', 'Garlic pasta'], ['🥗', 'Green salad'], ['🍰', 'Lemon cake'], ['🍲', 'Tomato soup']], d = dishes[Math.floor(t / 1.2) % 4];
+  $('heroE').textContent = d[0]; $('heroN').textContent = d[1];
+  $('hero').style.backgroundPosition = `${(t * 22) % 100}% 0`;
+  $('heroE').style.transform = `translateY(${-Math.abs(Math.sin(t * 5)) * 10}px) rotate(${Math.sin(t * 5) * 12}deg) scale(${1 + .08 * Math.sin(t * 10)})`;
+  $('rlIn').style.transform = `translateY(${-((t * 40) % 312)}px)`;
+  // the export: it climbs to 63%, then sits there saying "about 2 minutes left" for hours
+  const ep = Math.round(63 * io(seg(t, EXP_A, EXP_B)));
+  $('expBar').style.width = ep + '%';
+  $('expPct').textContent = `${ep}% · about ${ep < 40 ? 3 : 2} minutes left`;
+  const mins = since(t);
+  $('expStart').className = late ? 'late' : '';
+  $('expStart').innerHTML = late ? `<svg width="15" height="14" viewBox="0 0 15 14"><path d="M7.5 1L14 13H1z" fill="#f5a623" stroke="#f5a623" stroke-width="1.2" stroke-linejoin="round"/><path d="M7.5 5v3.6" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><circle cx="7.5" cy="10.8" r=".9" fill="#fff"/></svg>Started ${Math.floor(mins / 60)} h ${mins % 60} min ago` : 'Started just now';
+  $('exp').style.boxShadow = late ? '0 24px 60px rgba(60,0,0,.35),0 0 0 2.5px #f5a623' : '';
+  // the python script: the same photo, retried again and again
+  const rn = retries(t), rl = [];
+  for (let i = Math.max(1, rn - 4); i <= rn; i++) rl.push(`<span class="o">↻</span> lemon-cake.jpg <span class="d">retrying (${i.toLocaleString('en-US')})</span>`);
+  $('llog').innerHTML = rl.join('\n');
+  $('loop').style.boxShadow = late ? '0 24px 60px rgba(60,0,0,.35),0 0 0 2.5px #e5534b' : '';
+  const n = t < 4.4 ? 0 : Math.min(logLines.length + 40, Math.floor((t - 4.4) * 2.2) + 1);
+  const shown = [];
+  for (let i = Math.max(0, n - 6); i < n; i++) shown.push(i < 2 ? logLines[i] : logLines[2 + (i - 2) % (logLines.length - 2)]);
+  $('tlog').innerHTML = '<span class="d">$</span> npm run dev\n' + shown.join('\n');
+
+  // "still running" tags once the chat is closed
+  const tagOn = (stop) => seg(t, CLOSE + .4, CLOSE + .7) * (1 - seg(t, stop, stop + .25)) * (t > SKIP_A - .2 && t < SKIP_B + .1 ? 1 - win(t, SKIP_A - .2, SKIP_B + .1, .3) : 1);
+  const pulse = .88 + .12 * Math.sin(t * 6);
+  [['runT', 'term', 186, 140, S4], ['runE', 'exp', 182, 132, S1], ['runL', 'loop', 172, 140, S2], ['runS', 'simWrap', 22, 454, S3]].forEach(([id, k, x, y, s]) => {
+    const o = tagOn(s); css($(id), { left: at(k)[0] + x + 'px', top: at(k)[1] + y + 'px', opacity: o, display: o > .01 ? 'flex' : 'none', transform: `scale(${(.7 + .3 * back(seg(t, CLOSE + .4, CLOSE + .75))) * pulse})` });
+  });
+
+  // three hours later: dim the desk, spin a clock, drain the battery
+  const sk = win(t, SKIP_A, SKIP_B, .4);
+  css($('skip'), { opacity: sk, display: sk > .01 ? 'flex' : 'none' });
+  const turns = io(seg(t, SKIP_A + .3, SKIP_B - .4)) * 3;
+  $('hMin').style.transform = `rotate(${60 + turns * 360}deg)`;
+  $('hHr').style.transform = `rotate(${65 + turns * 30}deg)`;
+  const b = battery(t);
+  $('bigPct').textContent = b + '%';
+  css($('bigFill'), { width: b + '%', background: b < 30 ? '#ff3b30' : b < 50 ? '#ffcc00' : '#34c759' });
+  $('battPct').textContent = b + '%';
+  $('battPct').style.color = b < 30 ? '#c1121f' : '';
+  $('battFill').setAttribute('width', 18 * b / 100);
+  $('battFill').setAttribute('fill', b < 30 ? '#e5352b' : '#3a1210');
+  $('clock').textContent = clockText(t);
+
+  // the red dot, then the notification
+  const CLEAR = S4 + .3;
+  const dot = back(seg(t, 16.3, 16.6)) * (1 - seg(t, CLEAR, CLEAR + .2));
+  $('tkDot').setAttribute('opacity', Math.min(1, dot));
+  $('tkDot').setAttribute('r', 3.1 * (1 + .5 * Math.sin(seg(t, 16.3, 17.3) * Math.PI)));
+  const menuOpen = t > OPEN && t < SHUT + .2;
+  $('tk').style.background = menuOpen ? 'rgba(58,18,16,.18)' : '';
+  const nt = out(seg(t, 16.7, 17.1)) * (1 - seg(t, 19.0, 19.35));
+  css($('note'), { opacity: nt, display: nt > .01 ? 'flex' : 'none', transform: `translateX(${(1 - out(seg(t, 16.7, 17.1))) * 380}px)` });
+
+  // the menu
+  const mv = back(seg(t, OPEN, OPEN + .25)) * (1 - seg(t, SHUT, SHUT + .2));
+  css($('menu'), { display: mv > .01 ? 'block' : 'none', opacity: Math.min(1, mv * 1.4), transform: `scale(${.92 + .08 * Math.min(1, mv)})` });
+  const stops = [S1, S2, S3, S4], left = stops.filter((s) => t < s).length;
+  stops.forEach((s, i) => {
+    const r = $('r' + (i + 1)), done = t >= s;
+    r.style.opacity = done ? .5 : 1;
+    r.querySelector('.ac').style.display = done ? 'none' : 'flex';
+    r.querySelector('.ok').style.display = done ? 'block' : 'none';
+    r.querySelector('.bd').style.display = done ? 'none' : 'block';
+    $('a' + (i + 1)).classList.toggle('press', t > s - .2 && t < s);
+  });
+  if (t < CLEAR) {
+    $('bTitle').textContent = left === 1 ? '1 thing needs a look' : `${left} things need a look`;
+    $('bSub').textContent = "Claude left something running that's wasting battery.";
+    $('bIc').textContent = '!'; $('bIc').style.background = '#ff3b30';
+    $('banner').style.background = 'rgba(255,59,48,.2)';
+  } else {
+    $('bTitle').textContent = 'All clear';
+    $('bSub').textContent = "Claude hasn't left anything running.";
+    $('bIc').textContent = '✓'; $('bIc').style.background = '#34c759';
+    $('banner').style.background = 'rgba(52,199,89,.18)';
+  }
+  $('banner').style.transform = `scale(${1 + .04 * Math.sin(seg(t, CLEAR, CLEAR + .4) * Math.PI)})`;
+
+  // cursor
+  const near = (p, dx, dy) => [p[0] + dx, p[1] + dy];
+  const cp = path(t, [[8.4, 560, 600], [9.0, 560, 600], [9.9, ...c.close], [10.6, ...c.close], [11.4, 470, 420],
+    [18.6, 470, 420], [19.3, ...c.tk], [19.9, ...c.tk], [20.8, ...near(c.a1, 90, 40)], [23.4, ...near(c.a1, 90, 40)],
+    [23.75, ...c.a1], [24.25, ...c.a1], [24.55, ...c.a2], [25.05, ...c.a2], [25.35, ...c.a3], [25.85, ...c.a3], [26.15, ...c.a4], [26.75, ...c.a4],
+    [27.3, 820, 560], [28.9, 820, 560], [SHUT, 700, 420], [F, 700, 420]]);
+  const clickDip = clicks.some((x) => t > x - .02 && t < x + .12);
+  css($('cursor'), { left: cp[0] - 3 + 'px', top: cp[1] - 3 + 'px', opacity: (t > 8.4 && t < F ? 1 : 0) * (1 - sk), transform: clickDip ? 'scale(.85)' : '' });
+}
+
+// ?stamp shows the time in the corner, for reviewing
+if (location.search.includes('stamp')) {
+  const st = document.createElement('div');
+  st.style.cssText = 'position:absolute;right:12px;bottom:12px;z-index:999;padding:5px 10px;border-radius:8px;background:rgba(0,0,0,.7);color:#fff;font:600 20px Menlo,monospace';
+  document.getElementById('stage').appendChild(st);
+  const r0 = render;
+  render = (t) => { r0(t); st.textContent = '0:' + String(Math.floor(t)).padStart(2, '0') + '.' + Math.floor((t % 1) * 10); };
+}
+window.renderAt = (t) => render(t);
+document.body.dataset.ready = '1';
+if (!location.search.includes('capture')) {
+  const s = performance.now();
+  const loop = () => { render(((performance.now() - s) / 1000) % DUR); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+}
+</script>
+</body></html>
