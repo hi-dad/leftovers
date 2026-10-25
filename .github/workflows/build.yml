@@ -1,9 +1,20 @@
 name: Build
 
+# Code changes are built and checked on every push. Changes to only the README, pictures or docs
+# skip the build. A release (the Download link, and the update installed copies are offered) only
+# goes out when you ask: Actions → Build → Run workflow with "Publish a release" ticked, or
+# `gh workflow run build.yml -f release=true`.
 on:
   push:
+    paths-ignore: ['**.md', 'LICENSE', 'images/**', 'docs/**', 'previews/**', 'tools/ad/**']
   pull_request:
+    paths-ignore: ['**.md', 'LICENSE', 'images/**', 'docs/**', 'previews/**', 'tools/ad/**']
   workflow_dispatch:
+    inputs:
+      release:
+        description: Publish a release (users get offered the update)
+        type: boolean
+        default: false
 
 jobs:
   build:
@@ -12,6 +23,8 @@ jobs:
       contents: write # to publish a release when main changes
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # full history: the build number is the commit count
 
       - name: Show toolchain
         run: |
@@ -74,7 +87,7 @@ jobs:
           app="$mount/Leftovers.app"
           test -x "$app/Contents/MacOS/Leftovers"
           plutil -lint "$app/Contents/Info.plist"
-          codesign --verify --verbose "$app"
+          codesign --verify --deep --strict --verbose "$app"
           spctl --assess --type execute -vv "$app"   # Gatekeeper's verdict: must say "Notarized Developer ID"
           lipo "$app/Contents/MacOS/Leftovers" -verify_arch arm64 x86_64
           test -f "$mount/How to install.txt"
@@ -92,11 +105,14 @@ jobs:
 
       # Every update to main becomes the new download behind the README's Download link.
       - name: Publish release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'workflow_dispatch' && inputs.release && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
+          SPARKLE_ED_KEY: ${{ secrets.SPARKLE_ED_KEY }}
         run: |
+          # appcast.xml tells installed copies (Sparkle) about this version; see tools/sparkle.sh.
+          source tools/sparkle.sh && sparkle_appcast dist/Leftovers.dmg "Leftovers" leftovers "build-$GITHUB_RUN_NUMBER"
           version="$(grep -A1 CFBundleShortVersionString build.sh | grep -o '[0-9][0-9.]*' | head -1)"
-          gh release create "build-$GITHUB_RUN_NUMBER" dist/Leftovers.dmg \
+          gh release create "build-$GITHUB_RUN_NUMBER" dist/Leftovers.dmg dist/appcast.xml \
             --target "$GITHUB_SHA" --latest \
             --title "Leftovers $version (build $GITHUB_RUN_NUMBER)" --generate-notes

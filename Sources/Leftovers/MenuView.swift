@@ -93,6 +93,7 @@ struct MenuView: View {
             }
             Spacer()
             if ui.showSettings {
+                Button("Check for Updates…") { Updates.check() }
                 Button("Done") { ui.showSettings = false }
                 Button("Quit") { NSApp.terminate(nil) }
             } else {

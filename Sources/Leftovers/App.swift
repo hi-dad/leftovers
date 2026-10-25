@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import ServiceManagement
+import Sparkle
 import SwiftUI
 
 @main
@@ -43,6 +44,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
             .contains(where: { $0 != me }) {
             NSApp.terminate(nil); return
         }
+        Updates.start()
         // First launch: open at login, so Leftovers is still watching after a restart (it can't catch anything
         // if it isn't running). Switchable in Settings. Only for the installed app, never a test build.
         if !UserDefaults.standard.bool(forKey: "setUpOpenAtLogin"), Bundle.main.bundlePath.hasPrefix("/Applications/") {
@@ -166,4 +168,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
            bw.convertToScreen(b.convert(b.bounds, to: nil)).contains(NSEvent.mouseLocation) { return }
         closeDrop()
     }
+}
+
+// MARK: - Updates
+
+/// Self-updating from this app's GitHub releases (Sparkle): checks about once a day and offers new versions.
+enum Updates {
+    static let controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
+    static func start() { controller.startUpdater() }
+    static func check() { controller.checkForUpdates(nil) }
 }

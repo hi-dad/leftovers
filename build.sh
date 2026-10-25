@@ -6,6 +6,7 @@
 #   swift test          run the tests
 set -e
 cd "$(dirname "$0")"
+source tools/sparkle.sh   # self-updating (Sparkle itself comes from the Swift package)
 APP=Leftovers.app
 
 # Universal binary: Apple Silicon + Intel Macs.
@@ -15,6 +16,8 @@ BIN=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)/Leftove
 rm -rf $APP
 mkdir -p $APP/Contents/MacOS $APP/Contents/Resources
 cp $BIN $APP/Contents/MacOS/Leftovers
+sparkle_embed $APP "$(dirname $BIN)/Sparkle.framework"
+install_name_tool -add_rpath @executable_path/../Frameworks $APP/Contents/MacOS/Leftovers
 cp assets/AppIcon.icns $APP/Contents/Resources/
 
 cat > $APP/Contents/Info.plist <<PLIST
@@ -35,6 +38,7 @@ cat > $APP/Contents/Info.plist <<PLIST
   <key>NSHumanReadableCopyright</key><string>Free and offline.</string>
 </dict></plist>
 PLIST
+sparkle_plist $APP leftovers
 
 # Signing: a stable certificate lets macOS remember Leftovers' permissions (Desktop folder) across rebuilds.
 # Uses, in order: $SIGN_IDENTITY, the name in a local .signing-identity file (git-ignored, yours only),
@@ -45,9 +49,11 @@ IDENTITY="${SIGN_IDENTITY:-}"
 # A Developer ID signature (GitHub's release builds) also gets the hardened runtime + timestamp Apple's notarization needs.
 EXTRA=()
 [[ "$IDENTITY" == "Developer ID Application"* ]] && EXTRA=(--options runtime --timestamp)
-if [[ -n "$IDENTITY" ]] && codesign --force --sign "$IDENTITY" $EXTRA $APP 2>/dev/null; then
+if [[ -n "$IDENTITY" ]] && sparkle_sign $APP --force --sign "$IDENTITY" $EXTRA 2>/dev/null &&
+   codesign --force --sign "$IDENTITY" $EXTRA $APP 2>/dev/null; then
   echo "Signed with: $IDENTITY"
 else
+  sparkle_sign $APP --force --sign -
   codesign --force --sign - $APP
   echo "Signed ad-hoc (no certificate found); macOS may ask for permissions again after each rebuild."
 fi

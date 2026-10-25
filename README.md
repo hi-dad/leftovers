@@ -32,10 +32,10 @@ Each one shows what it is, how long it's been running, its battery cost per hour
 
 - **Never stops anything without your click.** **Ignore** hides it until its next run.
 - **Only watches what Claude started.** Your normal apps are never touched.
-- **Fully offline and very light:** about 0.02% of your battery an hour.
+- **Offline (apart from a quick daily update check) and very light:** about 0.02% of your battery an hour.
 - Choose what it watches in **Settings**.
 
-**Update:** download again and replace the app. **Remove:** quit it from its menu and drag it to the Trash.
+**Updates:** it offers new versions itself (or gear → **Check for Updates…**). **Remove:** quit it from its menu and drag it to the Trash.
 
 <details><summary>Build it yourself</summary>
 
