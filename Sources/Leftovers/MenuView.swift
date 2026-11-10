@@ -306,7 +306,7 @@ struct ItemRow: View {
         if !item.ports.isEmpty { a.append(("Open", { m.openInBrowser(item) })) }
         switch item.kind {
         case .leftover, .appStarted, .simulator:
-            if item.kind != .appStarted || item.verdict.level >= .info {
+            if item.kind != .appStarted || item.verdict.level >= .info || !item.ports.isEmpty {
                 a.append((item.kind == .simulator ? "Shut down" : "Stop", stop))
             }
             if m.kept[item.keepKey] == nil, item.verdict.level >= .info { a.append(("Ignore", { m.keep(item) })) }
@@ -329,6 +329,9 @@ struct ItemRow: View {
             if item.verdict.tag == "Looks stuck" {
                 a.append(("Stop", stop))
                 if m.kept[item.keepKey] == nil { a.append(("Ignore", { m.keep(item) })) }
+            } else if !item.ports.isEmpty {
+                // A test website can be held "in use" by a forgotten browser tab, so it can always be stopped.
+                a.append(("Stop", stop))
             }
         }
         return a

@@ -5,7 +5,7 @@ import Foundation
 extension Monitor {
     func canStop(_ i: Item) -> Bool {
         [.leftover, .appStarted, .simulator, .android, .chatHelper].contains(i.kind)
-            || (i.kind == .sessionJob && i.verdict.tag == "Looks stuck")
+            || (i.kind == .sessionJob && (i.verdict.tag == "Looks stuck" || !i.ports.isEmpty))
     }
 
     func stop(_ i: Item) {
