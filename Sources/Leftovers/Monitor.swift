@@ -190,7 +190,7 @@ final class Monitor: NSObject, ObservableObject {
             battery.capacityWh > 0 ? watts / battery.capacityWh * 100 : nil
         }
 
-        struct FamilyStats { var cpu = 0.0, watts = 0.0, average = 0.0, writes: [WrittenFile] = [], ports: [UInt16] = [], connections = 0, heaviest: ProcRecord? }
+        struct FamilyStats { var cpu = 0.0, watts = 0.0, average = 0.0, writes: [WrittenFile] = [], ports: [UInt16] = [], connections = 0, connectionIDs: [String] = [], heaviest: ProcRecord? }
         func stats(_ fam: [ProcRecord]) -> FamilyStats {
             var st = FamilyStats(), top = -1.0
             for p in fam {
@@ -200,7 +200,9 @@ final class Monitor: NSObject, ObservableObject {
                 let f = ProcScan.openFiles(p.pid)
                 st.writes += f.writes
                 st.ports += f.listening
-                st.connections += f.established.filter { f.listening.contains($0) }.count
+                let visits = f.established.filter { f.listening.contains($0.0) }
+                st.connections += visits.count
+                st.connectionIDs += visits.map { "\(p.pid)-\($0.0)-\($0.1)" }
             }
             st.ports = Array(Set(st.ports)).sorted()
             return st
@@ -221,7 +223,7 @@ final class Monitor: NSObject, ObservableObject {
                             sessionGuessed: match == nil ? false : match!.guessed,
                             project: classifier.project(for: root.cwd), folder: root.cwd.isEmpty ? nil : root.cwd, pids: fam.map(\.pid), started: root.start,
                             cpuPercent: st.cpu, watts: st.watts, batteryPerHour: perHour(st.watts),
-                            ports: st.ports, connections: st.connections,
+                            ports: st.ports, connections: st.connections, connectionIDs: st.connectionIDs,
                             lastOutput: st.writes.map(\.modified).max(), averageCpu: st.average,
                             startTimes: fam.map { $0.start.timeIntervalSince1970 },
                             keepKey: "\(kind.rawValue)-\(root.pid)-\(Int(root.start.timeIntervalSince1970))",

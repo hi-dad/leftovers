@@ -93,6 +93,7 @@ struct Item: Identifiable, Codable, Equatable {
     var batteryPerHour: Double?   // % of a full battery used per hour
     var ports: [UInt16] = []
     var connections = 0
+    var connectionIDs: [String] = [] // one id per open visitor connection, to tell new visits from an old tab
     var lastOutput: Date?         // newest change to a file it is writing
     var averageCpu: Double = 0    // CPU % averaged over each process's whole life
     var startTimes: [Double] = [] // start time of each pid, so Stop never hits a reused pid

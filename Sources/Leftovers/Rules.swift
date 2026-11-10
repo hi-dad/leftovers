@@ -19,7 +19,8 @@ struct Verdict: Codable, Equatable {
 struct Track: Codable, Equatable {
     var firstSeen: Date
     var heavySince: Date?
-    var lastConnection: Date?
+    var lastConnection: Date?     // last sign a test website was really used (see `updateTrack`)
+    var seenConnections: [String] = []
 }
 
 struct RuleContext {
@@ -62,7 +63,12 @@ enum Rules {
         } else {
             t.heavySince = nil
         }
-        if item.connections > 0 { t.lastConnection = now }
+        // A browser tab left open keeps its connection (and a dev server's live-reload link) open for days
+        // without anyone looking. So a website counts as visited only when a new connection shows up, or
+        // when it does real work while someone is connected (serving pages takes CPU; an idle open tab doesn't).
+        let fresh = item.connectionIDs.contains { !t.seenConnections.contains($0) }
+        if fresh || (item.connections > 0 && item.cpuPercent >= 1) { t.lastConnection = now }
+        t.seenConnections = item.connectionIDs
         return t
     }
 
@@ -81,7 +87,7 @@ enum Rules {
         case .leftover, .appStarted, .sessionJob:
             parts = ["Running " + dur(i.started)]
             if !i.ports.isEmpty {
-                parts.append(i.connections > 0 ? "\(i.connections) visitor\(i.connections == 1 ? "" : "s") now"
+                parts.append(i.connections > 0 && recentlyVisited(track, now: now, scale: (ctx.onBattery ? 0.5 : 1.0) / ctx.speedup) ? "\(i.connections) visitor\(i.connections == 1 ? "" : "s") now"
                              : ago(track.lastConnection).map { "last visit " + $0 } ?? "no visits yet")
             } else if let out = ago(i.lastOutput) {
                 parts.append("last change " + out)
@@ -105,6 +111,12 @@ enum Rules {
         return parts.joined(separator: " · ")
     }
 
+    /// Whether a test website was really used in the last 10 minutes (an open tab alone doesn't count).
+    static func recentlyVisited(_ track: Track, now: Date, scale: Double = 1) -> Bool {
+        guard let last = track.lastConnection else { return false }
+        return now.timeIntervalSince(last) < 10 * 60 * scale
+    }
+
     static func judge(_ i: Item, track: Track, ctx: RuleContext) -> Verdict {
         // Stricter on battery. (`defaults write com.danielryan.Leftovers ruleSpeedup 60` makes every wait
         // 60x shorter, for testing.)
@@ -117,13 +129,13 @@ enum Rules {
 
         let cost = i.batteryPerHour.map { $0 >= 1 ? String(format: " It's using about %.0f%% of your battery an hour.", $0) : "" } ?? ""
         let heavyFor = track.heavySince.map { now.timeIntervalSince($0) } ?? 0
-        let idleServer: TimeInterval? = i.ports.isEmpty || i.connections > 0 ? nil
+        let idleServer: TimeInterval? = i.ports.isEmpty || recentlyVisited(track, now: now, scale: scale) ? nil
             : now.timeIntervalSince(track.lastConnection ?? max(track.firstSeen, i.started))
 
         switch i.kind {
         case .leftover:
             let by = i.session.map { " Left by “\($0)”." } ?? ""
-            if i.connections > 0 { return Verdict(level: .none, tag: "In use") }
+            if recentlyVisited(track, now: now, scale: scale) { return Verdict(level: .none, tag: "In use") }
             if isHeavy(i), heavyFor >= 30 * min * scale,
                let out = i.lastOutput, now.timeIntervalSince(out) >= 30 * min * scale {
                 return Verdict(level: .alarm, tag: "Looks stuck",

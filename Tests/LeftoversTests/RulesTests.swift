@@ -92,7 +92,8 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
 
     @Test func aServerSomeoneIsUsingIsLeftAlone() {
         let i = item(.leftover, cpu: 30, perHour: 2, ports: [5173], connections: 2)
-        #expect(Rules.judge(i, track: heavyTrack(for: 3 * hour), ctx: ctx()).tag == "In use")
+        let track = Rules.updateTrack(heavyTrack(for: 3 * hour), item: i, now: now)   // busy while visited
+        #expect(Rules.judge(i, track: track, ctx: ctx()).tag == "In use")
     }
 
     @Test func idleServerIsMenuOnly() {
@@ -276,7 +277,26 @@ private func heavyTrack(for ago: TimeInterval, connectedAgo: TimeInterval? = nil
         #expect(Rules.judge(sim, track: Track(firstSeen: now), ctx: ctx(simUsedAgo: 5 * min)).level == .none)   // in use
         #expect(Rules.judge(sim, track: Track(firstSeen: now), ctx: ctx(simUsedAgo: 45 * min)).level == .info)  // inactive
         let visited = item(.leftover, ports: [8000], connections: 1)
-        #expect(Rules.judge(visited, track: Track(firstSeen: now), ctx: ctx()).level == .none)
+        let recent = Track(firstSeen: now.addingTimeInterval(-hour), lastConnection: now.addingTimeInterval(-2 * min))
+        #expect(Rules.judge(visited, track: recent, ctx: ctx()).level == .none)
+    }
+
+    @Test func aForgottenTabIsNotInUse() {
+        // A browser tab left open on a test website: one connection, held for hours, server doing nothing.
+        var site = item(.appStarted, startedAgo: 8 * 24 * hour, ports: [8081], connections: 1)
+        site.connectionIDs = ["7-8081-52000"]
+        let first = Rules.updateTrack(nil, item: site, now: now.addingTimeInterval(-2 * hour))
+        #expect(first.lastConnection == now.addingTimeInterval(-2 * hour))        // first seen: counts as a visit
+        let later = Rules.updateTrack(first, item: site, now: now)
+        #expect(later.lastConnection == first.lastConnection)                     // same old connection: no visit
+        #expect(Rules.judge(site, track: later, ctx: ctx()).level == .info)       // inactive, not in use
+        #expect(Rules.status(site, track: later, ctx: ctx()).hasSuffix("last visit 2 h ago"))
+
+        var newVisit = site; newVisit.connectionIDs = ["7-8081-52000", "7-8081-52011"]; newVisit.connections = 2
+        #expect(Rules.updateTrack(later, item: newVisit, now: now).lastConnection == now)   // a new connection
+        var serving = site; serving.cpuPercent = 4
+        #expect(Rules.updateTrack(later, item: serving, now: now).lastConnection == now)    // serving pages
+        #expect(Rules.judge(serving, track: Rules.updateTrack(later, item: serving, now: now), ctx: ctx()).level == .none)
     }
 }
 

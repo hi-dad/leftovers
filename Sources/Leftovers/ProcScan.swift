@@ -57,13 +57,14 @@ enum ProcScan {
     }
 
     /// Files the process has open for writing, and its TCP sockets.
-    static func openFiles(_ pid: pid_t) -> (writes: [WrittenFile], listening: [UInt16], established: [UInt16]) {
+    /// `established` holds (local port, remote port) for each open TCP connection.
+    static func openFiles(_ pid: pid_t) -> (writes: [WrittenFile], listening: [UInt16], established: [(UInt16, UInt16)]) {
         let bytes = proc_pidinfo(pid, PROC_PIDLISTFDS, 0, nil, 0)
         guard bytes > 0 else { return ([], [], []) }
         let stride = MemoryLayout<proc_fdinfo>.stride
         var fds = [proc_fdinfo](repeating: proc_fdinfo(), count: Int(bytes) / stride + 16)
         let got = Int(proc_pidinfo(pid, PROC_PIDLISTFDS, 0, &fds, Int32(fds.count * stride))) / stride
-        var writes: [WrittenFile] = [], listening: [UInt16] = [], established: [UInt16] = []
+        var writes: [WrittenFile] = [], listening: [UInt16] = [], established: [(UInt16, UInt16)] = []
         for fd in fds.prefix(max(got, 0)) {
             if fd.proc_fdtype == UInt32(PROX_FDTYPE_VNODE) {
                 var v = vnode_fdinfowithpath()
@@ -85,7 +86,8 @@ enum ProcScan {
                 let port = UInt16(bigEndian: UInt16(truncatingIfNeeded: tcp.tcpsi_ini.insi_lport))
                 switch tcp.tcpsi_state {
                 case Int32(TSI_S_LISTEN): listening.append(port)
-                case Int32(TSI_S_ESTABLISHED): established.append(port)
+                case Int32(TSI_S_ESTABLISHED):
+                    established.append((port, UInt16(bigEndian: UInt16(truncatingIfNeeded: tcp.tcpsi_ini.insi_fport))))
                 default: break
                 }
             }
